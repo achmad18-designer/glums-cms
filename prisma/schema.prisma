@@ -1,0 +1,120 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model Contact {
+    id        Int      @id @default(autoincrement())
+    name      String?
+    phone     String?
+    email     String?
+    message   String?
+    createdAt DateTime @map("created_at")
+    updatedAt DateTime @map("updated_at")
+
+    @@map("tb_contact")
+}
+
+model ContactSettings {
+    id        Int      @id @default(autoincrement())
+    platform  String?
+    link      String?
+    createdAt DateTime @map("created_at")
+    updatedAt DateTime @map("updated_at")
+
+    @@map("tb_contact_settings")
+}
+
+model GeneralSettings {
+    id               Int      @id @default(autoincrement())
+    ptName           String?  @map("pt_name")
+    ptAddress        String?  @map("pt_address")
+    marquee          String?
+    copyRight        String?  @map("copy_right")
+    logoWebsiteName  String?  @map("logo_website_name")
+    logoWebsitePath  String?  @map("logo_website_path")
+    videoProfileName String?  @map("video_profile_name")
+    videoProfilePath String?  @map("video_profile_path")
+    aboutDesc        String?  @map("about_desc")
+    teamMemberDesc   String?  @map("team_member_desc")
+    whatWeDoDesc     String?  @map("what_we_do_desc")
+    createdAt        DateTime @map("created_at")
+    updatedAt        DateTime @map("updated_at")
+
+    @@map("tb_general_settings")
+}
+
+model Project {
+    id                Int      @id @default(autoincrement())
+    name              String?
+    desc              String?
+    caseStudy         String?  @map("case_study")
+    why               String?
+    logoProjectName   String?  @map("logo_project_name")
+    logoProjectPath   String?  @map("logo_project_path")
+    bannerProjectName String?  @map("banner_project_name")
+    bannerProjectPath String?  @map("banner_project_path")
+    imgWhyName        String?  @map("img_why_name")
+    imgWhyPath        String?  @map("img_why_path")
+    images            String?
+    serviceId         Int?     @map("service_id")
+    createdAt         DateTime @map("created_at")
+    updatedAt         DateTime @map("updated_at")
+
+    service Service? @relation(fields: [serviceId], references: [id])
+
+    @@map("tb_projects")
+}
+
+model Service {
+    id                Int      @id @default(autoincrement())
+    serviceName       String?  @map("service_name")
+    excerpt           String?
+    subExcerpt        String?  @map("sub_excerpt")
+    desc              String?
+    serviceBannerPath String?  @map("service_banner_path")
+    serviceBannerName String?  @map("service_banner_name")
+    createdAt         DateTime @map("created_at")
+    updatedAt         DateTime @map("updated_at")
+
+    projects    Project[]
+    subServices SubService[]
+
+    @@map("tb_services")
+}
+
+model SubService {
+    id                   Int      @id @default(autoincrement())
+    serviceId            Int?     @map("service_id")
+    subServiceName       String?  @map("sub_service_name")
+    subServiceDesc       String?  @map("sub_service_desc")
+    subServiceBannerPath String?  @map("sub_service_banner_path")
+    subServiceBannerName String?  @map("sub_service_banner_name")
+    createdAt            DateTime @map("created_at")
+    updatedAt            DateTime @map("updated_at")
+
+    service Service? @relation(fields: [serviceId], references: [id])
+
+    @@map("tb_sub_service")
+}
+
+model User {
+    id           Int      @id @default(autoincrement())
+    name         String
+    username     String   @unique
+    role         String?
+    desc         String?
+    email        String   @unique
+    password     String
+    img          String?
+    imgPath      String?  @map("img_path")
+    refreshToken String?  @map("refresh_token")
+    createdAt    DateTime @map("created_at")
+    updatedAt    DateTime @map("updated_at")
+
+    @@map("tb_users")
+}

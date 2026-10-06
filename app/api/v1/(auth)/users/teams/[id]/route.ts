@@ -1,0 +1,19 @@
+import { deleteTeamUser, updateTeamUser } from "@/features/auth/auth.controller";
+
+type Params = {
+    params: Promise<{
+        id: string;
+    }>;
+};
+
+export async function DELETE(request: Request, { params }: Params) {
+    // VerifyToken
+    const { id } = await params;
+    return deleteTeamUser(id);
+}
+
+export async function PATCH(request: Request, { params }: Params) {
+    // VerifyToken
+    const { id } = await params;
+    return updateTeamUser(id, request);
+}

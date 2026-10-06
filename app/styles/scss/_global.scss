@@ -1,0 +1,104 @@
+@font-face {
+    font-family: "HelveticaNeue-Regular";
+    src: url(../../assets/fonts/helvetica-neue/HelveticaNeue-Regular.ttf) format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "HelveticaNeue-Light";
+    src: url(../../assets/fonts/helvetica-neue/HelveticaNeue-Light.ttf) format("truetype");
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "HelveticaNeue-Medium";
+    src: url(../../assets/fonts/helvetica-neue/HelveticaNeue-Medium.ttf) format("truetype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "HelveticaNeue-Bold";
+    src: url(../../assets/fonts/helvetica-neue/HelveticaNeue-Bold.ttf) format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    scrollbar-width: none;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: "HelveticaNeue-Regular", sans-serif;
+    line-height: 1.5;
+    color: $color-black;
+    background-color: $color-white;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    font-weight: 500;
+    color: $color-black;
+    text-decoration: inherit;
+}
+a:hover {
+    color: $color-black;
+}
+
+button {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    color: $color-white;
+    cursor: pointer;
+}
+button:hover {
+    color: $color-black;
+    background-color: transparent;
+}
+button:focus,
+button:focus-visible {
+    outline: none;
+}
+
+ul {
+    list-style: none;
+}
+
+.arrowWrap__animate {
+    overflow-x: hidden;
+    .arrows-icon {
+        display: flex;
+        .arrow__item {
+            flex-shrink: 0;
+            object-fit: contain;
+        }
+    }
+}
+
+.container {
+    padding: 0;
+    position: relative;
+    @include media.ipad {
+        padding: 0 12vw;
+    }
+    @include media.mobile {
+        padding: 0 2rem;
+    }
+}
