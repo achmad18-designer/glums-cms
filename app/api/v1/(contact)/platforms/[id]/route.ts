@@ -1,4 +1,6 @@
+import { verifyAccessToken } from '@/features/auth/auth.middleware';
 import { deletePlatform, updatePlatform } from '@/features/platforms/platforms.controller';
+import { errorResponse } from '@/utils/response';
 
 type Params = {
     params: Promise<{
@@ -10,11 +12,19 @@ export async function PUT(
     request: Request,
     { params }: Params
 ) {
+    // VerifyToken
+    const payload = await verifyAccessToken(request);
+
+    if (!payload) {
+        return errorResponse(
+            'Unauthorized. Please login first.',
+            401
+        )
+    }
+
     const { id } = await params;
     const body = await request.json();
 
-    // VerifyToken
-    // updatePlatform(id, body)
     return updatePlatform(id, body);
 }
 
@@ -22,10 +32,16 @@ export async function DELETE(
     request: Request,
     { params }: Params
 ) {
-    const { id } = await params;
-
     // VerifyToken
-    // deletePlatform(id)
+    const payload = await verifyAccessToken(request);
 
+    if (!payload) {
+        return errorResponse(
+            'Unauthorized. Please login first.',
+            401
+        )
+    }
+
+    const { id } = await params;
     return deletePlatform(id);
 }
