@@ -1,4 +1,4 @@
-import { deleteTeamUser, updateTeamUser } from "@/features/auth/auth.controller";
+import { deleteTeamUser, updateTeamUser } from "@/features/users/users.controller";
 
 type Params = {
     params: Promise<{

@@ -63,5 +63,12 @@ export const userEmailSchema = z
     .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
     .min(1, 'Email is required');
 
+
+export const loginSchema = z.object({
+    email: z.string().regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Email format must be valid').min(1, 'Email is required'),
+    password: z.string().min(1, 'Password is required'),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type RegisterTeamInput = z.infer<typeof registerTeamSchema>;

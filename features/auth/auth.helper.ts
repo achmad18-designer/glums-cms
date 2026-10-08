@@ -1,18 +1,6 @@
-import { Prisma } from '@/src/generated/prisma/client';
 import prisma from '@/src/lib/prisma';
+import { jwtVerify, SignJWT } from 'jose';
 
-export function isValidId(projectId: number): boolean {
-    return Number.isInteger(projectId) && projectId > 0;
-}
-
-
-export async function getUserById(id: string) {
-    return prisma.user.findUnique({
-        where: {
-            id: Number(id),
-        },
-    })
-}
 export async function getUserByEmail(email: string) {
     return prisma.user.findUnique({
         where: {
@@ -21,53 +9,88 @@ export async function getUserByEmail(email: string) {
     });
 }
 
-export async function getUserByUsername(username: string) {
-    return prisma.user.findUnique({
-        where: {
-            username,
-        },
-    });
-}
-
-export async function getMasterUser() {
-    return prisma.user.findFirst({
-        where: {
-            role: 'master',
-        },
-    });
-}
-
-export async function createUser(
-    data: Prisma.UserCreateInput
-) {
-    return prisma.user.create({
-        data,
-    });
-}
-
-export async function updateUser(
+export async function updateRefreshToken(
     id: number,
-    data: {
-        name?: string;
-        email?: string;
-        role?: string;
-        desc?: string;
-        img?: string;
-        imgPath?: string;
-    }
+    refreshToken: string
 ) {
     return prisma.user.update({
-        where: { id },
-        omit: {
-            password: true,
-            refreshToken: true
+        where: {
+            id,
         },
-        data,
+        data: {
+            refreshToken,
+        },
     });
 }
 
-export async function deleteUser(id: number) {
-    return prisma.user.delete({
-        where: { id },
+export async function getUserByRefreshToken(
+    refreshToken: string
+) {
+    return prisma.user.findFirst({
+        where: {
+            refreshToken,
+        },
+    });
+}
+
+const secretTokenKey = new TextEncoder().encode(
+    process.env.SECRET_TOKEN_KEY
+);
+
+const refreshTokenKey = new TextEncoder().encode(
+    process.env.REFRESH_TOKEN_KEY
+);
+
+export function getSecretKey(
+    value: string | undefined,
+    name: string
+) {
+    if (!value) {
+        throw new Error(
+            `${name} environment variable is not configured`
+        );
+    }
+
+    return new TextEncoder().encode(value);
+}
+
+export async function verifyRefreshToken(
+    refreshToken: string
+) {
+    const secretKey = getSecretKey(
+        process.env.REFRESH_TOKEN_KEY,
+        'REFRESH_TOKEN_KEY'
+    );
+
+    return jwtVerify(
+        refreshToken,
+        secretKey
+    );
+}
+
+export async function generateAccessToken(username: string) {
+    return new SignJWT({ username })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('20s')
+        .sign(secretTokenKey);
+}
+
+export async function generateRefreshToken(username: string) {
+    return new SignJWT({ username })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('1d')
+        .sign(refreshTokenKey);
+}
+
+export async function clearRefreshToken(
+    id: number
+) {
+    return prisma.user.update({
+        where: {
+            id,
+        },
+        data: {
+            refreshToken: null,
+        },
     });
 }

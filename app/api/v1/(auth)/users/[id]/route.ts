@@ -1,4 +1,4 @@
-import { updateMasterUser } from "@/features/auth/auth.controller";
+import { updateMasterUser } from "@/features/users/users.controller";
 
 type Params = {
     params: Promise<{

@@ -1,4 +1,4 @@
-import { registerTeam } from "@/features/auth/auth.controller";
+import { registerTeam } from "@/features/users/users.controller";
 
 export async function POST(request: Request) {
     // VerifyToken

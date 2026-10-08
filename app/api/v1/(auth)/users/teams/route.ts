@@ -1,4 +1,5 @@
-import { getAllUsers, getDetailUserTeam } from "@/features/auth/auth.controller";
+import { getAllUsers, getDetailUserTeam } from "@/features/users/users.controller";
+
 
 export async function POST(request: Request) {
     return getDetailUserTeam(request);

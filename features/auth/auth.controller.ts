@@ -1,35 +1,24 @@
-import { Prisma } from '@/src/generated/prisma/client';
-import prisma from '@/src/lib/prisma';
 import {
     errorResponse,
     successResponse,
 } from '@/utils/response';
-import { uploadFile } from '@/utils/uploadFile';
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
 import {
-    createUser,
-    deleteUser,
-    getMasterUser,
+    clearRefreshToken,
+    generateAccessToken,
+    generateRefreshToken,
     getUserByEmail,
-    getUserById,
-    getUserByUsername,
-    isValidId,
-    updateUser,
+    getUserByRefreshToken,
+    updateRefreshToken,
+    verifyRefreshToken
 } from './auth.helper';
-import { registerSchema, registerTeamSchema, updateTeamSchema, updateUserMasterSchema } from './auth.schema';
-import { removeFile } from '@/utils/removeFile';
+import { loginSchema } from './auth.schema';
 
-export async function registerMaster(request: Request) {
+export async function login(request: Request) {
     try {
         const body = await request.json();
-
-        const master = await getMasterUser();
-
-        if (master) {
-            return errorResponse('User register has closed', 400);
-        }
-
-        const validation = registerSchema.safeParse(body);
+        const validation = loginSchema.safeParse(body);
 
         if (!validation.success) {
             return errorResponse(
@@ -38,560 +27,183 @@ export async function registerMaster(request: Request) {
             );
         }
 
-        const {
-            name,
-            username,
-            email,
-            password,
-        } = validation.data;
+        const { email, password } = validation.data;
 
-        const [existingEmail, existingUsername] =
-            await Promise.all([
-                getUserByEmail(email),
-                getUserByUsername(username),
-            ]);
-
-        if (existingEmail) {
-            return errorResponse(
-                'Email already used',
-                409
-            );
-        }
-
-
-        if (existingUsername) {
-            return errorResponse(
-                'Username already used',
-                409
-            );
-        }
-
-        const hashedPassword = await bcrypt.hash(
-            password,
-            10
-        );
-
-        const user = await createUser({
-            name,
-            username,
-            email,
-            password: hashedPassword,
-            role: 'master',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
-
-        return successResponse(
-            {
-                id: user.id,
-                name: user.name,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-            },
-            'User registered successfully',
-            201
-        );
-    } catch (error) {
-        console.error('Register error:', error);
-
-        if (
-            error instanceof Prisma.PrismaClientKnownRequestError
-        ) {
-            if (error.code === 'P2002') {
-                return errorResponse(
-                    'Username or email already used',
-                    409
-                );
-            }
-        }
-
-        return errorResponse(
-            'Failed to register user'
-        );
-    }
-}
-
-export async function registerTeam(
-    request: Request
-) {
-    try {
-        const formData = await request.formData();
-
-        const validation = registerTeamSchema.safeParse({
-            name: formData.get('name') || undefined,
-            email: formData.get('email') || undefined,
-            role: formData.get('role') || undefined,
-            desc: formData.get('desc') || undefined,
-        });
-
-        if (!validation.success) {
-            return errorResponse(
-                validation.error.issues[0].message,
-                400
-            );
-        }
-
-        if (validation.data.role.toLowerCase() === 'master') {
-            return errorResponse(
-                'Master role already exists. Please use another role.',
-                400
-            );
-        }
-
-        const img = formData.get('img');
-
-        if (!(img instanceof File)) {
-            return errorResponse(
-                'Image is required',
-                400
-            );
-        }
-
-        const existingEmail = await getUserByEmail(
-            validation.data.email
-        );
-
-        if (existingEmail) {
-            return errorResponse(
-                'Email already used',
-                409
-            );
-        }
-
-        if (validation.data.role === 'master') {
-            const master = await getMasterUser();
-
-            if (master) {
-                return errorResponse(
-                    'Master role already exists. Please use another role.',
-                    409
-                );
-            }
-        }
-
-        const uploadedImage = await uploadFile(img);
-
-        const user = await createUser({
-            name: validation.data.name,
-            email: validation.data.email,
-            username: validation.data.email,
-            role: validation.data.role,
-            desc: validation.data.desc,
-            password: '',
-            img: uploadedImage.name,
-            imgPath: uploadedImage.path,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
-
-        return successResponse(
-            {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                desc: user.desc,
-                img: user.img,
-                imgPath: user.imgPath,
-            },
-            'Team registered successfully',
-            201
-        );
-    } catch (error) {
-        console.error(
-            'Register team error:',
-            error
-        );
-
-        if (
-            error instanceof Prisma.PrismaClientKnownRequestError
-        ) {
-            if (error.code === 'P2002') {
-                return errorResponse(
-                    'Email already used',
-                    409
-                );
-            }
-        }
-
-        return errorResponse(
-            'Failed to register team'
-        );
-    }
-}
-
-export async function getDetailUserMaster(request: Request) {
-    try {
-        const body = await request.json();
-
-        if (!isValidId(body.id)) {
-            return errorResponse(
-                'Invalid user id',
-                400
-            );
-        }
-
-        const user = await prisma.user.findUnique({
-            omit: {
-                password: true,
-                refreshToken: true,
-            },
-            where: {
-                id: Number(body.id),
-            },
-        })
+        const user = await getUserByEmail(email);
 
         if (!user) {
-            return errorResponse(
-                'User not found',
-                404
-            );
+            return errorResponse('Invalid credentials', 401);
         }
-
-        if (user.role !== 'master') {
-            return errorResponse(
-                'Unauthorized',
-                403
-            );
-        }
-
-        return successResponse(
-            user,
-            'User retrieved successfully'
-        );
-    } catch (error) {
-        console.error(
-            'Get user by id error:',
-            error
-        );
-
-        return errorResponse(
-            'Failed to get user'
-        );
-    }
-}
-
-export async function getDetailUserTeam(request: Request) {
-    try {
-        const body = await request.json();
-
-        if (!isValidId(body.id)) {
-            return errorResponse(
-                'Invalid user id',
-                400
-            );
-        }
-
-        const user = await prisma.user.findUnique({
-            omit: {
-                password: true,
-                refreshToken: true,
-            },
-            where: {
-                id: Number(body.id),
-            },
-        })
-
-        if (!user) {
-            return errorResponse(
-                'User not found',
-                404
-            );
-        }
-
-        if (user.role === 'master') {
-            return errorResponse(
-                'Unauthorized',
-                403
-            );
-        }
-
-        return successResponse(
-            user,
-            'User retrieved successfully'
-        );
-    } catch (error) {
-        console.error(
-            'Get user by id error:',
-            error
-        );
-
-        return errorResponse(
-            'Failed to get user'
-        );
-    }
-}
-
-export async function getAllUsers() {
-    try {
-        const users = await prisma.user.findMany({
-            omit: {
-                password: true,
-                refreshToken: true,
-            },
-            where: {
-                role: {
-                    not: 'master',
-                },
-            },
-            orderBy: {
-                id: 'desc',
-            },
-        })
-
-        return successResponse(
-            users,
-            'Users retrieved successfully'
-        );
-    } catch (error) {
-        console.error(
-            'Get all users error:',
-            error
-        );
-
-        return errorResponse(
-            'Failed to get users'
-        );
-    }
-}
-
-export async function updateMasterUser(
-    id: string,
-    request: Request
-) {
-    try {
-        const userId = id;
-
-        if (!isValidId(Number(userId))) {
-            return errorResponse(
-                'Invalid user id',
-                400
-            );
-        }
-
-        const user = await getUserById(userId);
-
-        if (!user) {
-            return errorResponse('User not found', 404);
-        }
-
-        if (user.role !== 'master') {
-            return errorResponse('Unauthorized', 403);
-        }
-
-        const body = await request.json();
-
-        const validation = updateUserMasterSchema.safeParse(body);
-
-        if (!validation.success) {
-            return errorResponse(
-                validation.error.issues[0].message,
-                400
-            );
-        }
-
-        const {
-            name,
-            currentPassword,
-            newPassword,
-        } = validation.data;
 
         const isPasswordValid = await bcrypt.compare(
-            currentPassword,
+            password,
             user.password
         );
 
         if (!isPasswordValid) {
-            return errorResponse('Invalid password', 401);
+            return errorResponse('Invalid credentials', 401);
         }
 
-        const updateData: {
-            name: string;
-            password?: string;
-        } = {
-            name,
-        };
-
-        if (newPassword) {
-            updateData.password = await bcrypt.hash(
-                newPassword,
-                10
+        if (user.role !== 'master') {
+            return errorResponse(
+                'You are not authorized to login',
+                403
             );
         }
 
-        await updateUser(Number(userId), updateData);
-
-        return successResponse(
-            null,
-            'User updated successfully'
+        const accessToken = await generateAccessToken(
+            user.username
         );
+
+        const refreshToken = await generateRefreshToken(
+            user.username
+        );
+
+        await updateRefreshToken(
+            user.id,
+            refreshToken
+        );
+
+        const response = successResponse(
+            {
+                accessToken,
+            },
+            'Login successful'
+        );
+
+        response.cookies.set({
+            name: 'refreshToken',
+            value: refreshToken,
+            httpOnly: true,
+            maxAge: 24 * 60 * 60,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+        });
+
+        return response;
     } catch (error) {
-        console.error(error)
-
-        return errorResponse('Failed to update user');
-    }
-
-}
-
-export async function updateTeamUser(
-    id: string,
-    request: Request
-) {
-    const userId = id;
-
-    if (!isValidId(Number(userId))) {
-        return errorResponse(
-            'Invalid user id',
-            400
-        );
-    }
-
-    const user = await getUserById(userId);
-
-    if (!user) {
-        return errorResponse('User not found', 404);
-    }
-
-    if (user.role === 'master') {
-        return errorResponse('Unauthorized', 403);
-    }
-
-    const formData = await request.formData();
-
-    const body = {
-        name: formData.get('name'),
-        desc: formData.get('desc'),
-        email: formData.get('email'),
-        role: formData.get('role')
-    };
-
-    const validation = updateTeamSchema.safeParse(body);
-
-    if (!validation.success) {
-        return errorResponse(
-            validation.error.issues[0].message,
-            400
-        );
-    }
-
-    const img = formData.get('img');
-
-    if (img !== null && !(img instanceof File)) {
-        return errorResponse('Invalid image file', 400);
-    }
-
-    let newImage = null;
-
-    try {
-        /**
-         * Upload image baru jika ada
-         */
-        if (img instanceof File && img.size > 0) {
-            newImage = await uploadFile(img);
-        }
-
-        /**
-         * Prepare update data
-         */
-        const updateData: {
-            name: string;
-            desc: string;
-            role: string;
-            email: string;
-            img?: string;
-            imgPath?: string;
-        } = {
-            name: validation.data.name,
-            desc: validation.data.desc,
-            email: validation.data.email,
-            role: validation.data.role
-        };
-
-        if (newImage) {
-            updateData.img = newImage.name;
-            updateData.imgPath = newImage.path;
-        }
-
-        /**
-         * Update database
-         */
-        const updatedUser = await updateUser(
-            Number(userId),
-            updateData
-        );
-
-        /**
-         * Hapus image lama setelah DB berhasil
-         */
-        if (newImage && user.imgPath) {
-            await removeFile(user.imgPath);
-        }
-
-        return successResponse(
-            updatedUser,
-            'Team user updated successfully'
-        );
-    } catch (error) {
-        /**
-         * Jika upload berhasil tetapi DB gagal,
-         * hapus image baru agar tidak menjadi orphan Blob.
-         */
-        if (newImage) {
-            await removeFile(newImage.path);
-        }
-
         console.error(error);
 
         return errorResponse(
-            'Failed to update team user',
+            'Internal server error',
             500
         );
     }
 }
 
-export async function deleteTeamUser(id: string) {
-    const userId = id;
-
-    if (!isValidId(Number(userId))) {
-        return errorResponse(
-            'Invalid user id',
-            400
-        );
-    }
-
-    const team = await getUserById(userId);
-
-    if (!team) {
-        return errorResponse('User not found', 404);
-    }
-
-    if (team.role === 'master') {
-        return errorResponse('Unauthorized', 403);
-    }
-
-    const oldImagePath = team.imgPath;
-
+export async function refreshToken() {
     try {
-        await deleteUser(Number(userId));
-
         /**
-         * Hapus image setelah DB berhasil
+         * 1. Get refresh token from cookie
          */
-        if (oldImagePath) {
-            await removeFile(oldImagePath);
+        const cookieStore = await cookies();
+
+        const refreshToken = cookieStore.get(
+            'refreshToken'
+        )?.value;
+
+        if (!refreshToken) {
+            return errorResponse(
+                'Unauthorized. Please login first.',
+                401
+            );
         }
 
-        return successResponse(
-            null,
-            'Team deleted successfully'
+        /**
+         * 2. Match refresh token with database
+         */
+        const user = await getUserByRefreshToken(
+            refreshToken
         );
+
+        if (!user) {
+            return errorResponse(
+                'Invalid refresh token',
+                403
+            );
+        }
+
+        /**
+         * 3. Verify JWT refresh token
+         */
+        try {
+            await verifyRefreshToken(refreshToken);
+        } catch {
+            return errorResponse(
+                'Invalid refresh token',
+                403
+            );
+        }
+
+        /**
+         * 4. Make sure only master can refresh token
+         */
+        if (user.role !== 'master') {
+            return errorResponse(
+                'You are not authorized',
+                403
+            );
+        }
+
+        /**
+         * 5. Generate new access token
+         */
+        const accessToken = await generateAccessToken(
+            user.username
+        );
+
+        return successResponse({
+            accessToken,
+        });
     } catch (error) {
         console.error(error);
 
         return errorResponse(
-            'Failed to delete team',
+            'Internal server error',
             500
         );
+    }
+}
+
+export async function logout() {
+    try {
+
+        const cookieStore = await cookies();
+
+        const refreshToken = cookieStore.get(
+            'refreshToken'
+        )?.value;
+
+        if (!refreshToken) {
+            return errorResponse(
+                'Unauthorized. Please login first.',
+                401
+            )
+        }
+
+        const user = await getUserByRefreshToken(
+            refreshToken
+        );
+
+        if (!user) {
+            return errorResponse(
+                'Invalid refresh token',
+                403
+            )
+        }
+
+        await clearRefreshToken(user.id);
+
+        cookieStore.delete('refreshToken');
+
+        return new Response(null, { status: 204 });
+    } catch (error) {
+        console.error(error);
+
+        return errorResponse(
+            'Internal server error',
+            500
+        )
     }
 }

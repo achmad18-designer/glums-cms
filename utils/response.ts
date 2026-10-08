@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 
 type SuccessResponse<T> = {
     success: true;
-    message: string;
-    data: T;
+    message: string | null;
+    data: T | null;
 };
 
 type ErrorResponse = {
