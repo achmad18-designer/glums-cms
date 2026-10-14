@@ -2,21 +2,42 @@ import type { ThemeConfig } from 'antd';
 import { theme } from 'antd';
 
 export const antdTheme: ThemeConfig = {
-    algorithm: theme.darkAlgorithm,
+    algorithm: theme.defaultAlgorithm,
 
     token: {
-        colorPrimary: '#6366f1',
+        // Primary
+        colorPrimary: '#212121',
+        colorPrimaryHover: '#000000',
+        colorPrimaryActive: '#000000',
 
-        colorBgBase: '#0f172a',
-        colorBgContainer: '#111827',
-        colorBgElevated: '#1f2937',
+        // Text
+        colorTextBase: '#212121',
+        colorText: '#212121',
+        colorTextSecondary: '#757575',
+        colorTextTertiary: '#757575',
+        colorTextQuaternary: '#9E9E9E',
 
-        colorTextBase: '#f8fafc',
-        colorText: '#e5e7eb',
-        colorTextSecondary: '#9ca3af',
+        // Background
+        colorBgBase: '#FFFFFF',
+        colorBgContainer: '#FFFFFF',
+        colorBgElevated: '#FFFFFF',
+        colorBgLayout: '#FFFFFF',
+        colorBgSpotlight: '#212121',
 
-        colorBorder: '#374151',
-        colorBorderSecondary: '#1f2937',
+        // Border
+        colorBorder: '#E0E0E0',
+        colorBorderSecondary: '#F5F5F5',
+
+        // Fill
+        colorFill: '#F5F5F5',
+        colorFillSecondary: '#F5F5F5',
+        colorFillTertiary: '#FAFAFA',
+        colorFillQuaternary: '#FFFFFF',
+
+        // Link
+        colorLink: '#212121',
+        colorLinkHover: '#000000',
+        colorLinkActive: '#000000',
 
         borderRadius: 8,
 
@@ -26,53 +47,137 @@ export const antdTheme: ThemeConfig = {
 
     components: {
         Layout: {
-            headerBg: '#111827',
-            siderBg: '#0f172a',
-            bodyBg: '#0f172a',
-            footerBg: '#0f172a',
+            headerBg: '#FFFFFF',
+            siderBg: '#F5F5F5',
+            bodyBg: '#FFFFFF',
+            footerBg: '#FFFFFF',
         },
 
         Menu: {
-            darkItemBg: '#0f172a',
-            darkSubMenuItemBg: '#111827',
-            darkItemSelectedBg: '#312e81',
-            darkItemHoverBg: '#1e293b',
-            darkItemColor: '#cbd5e1',
-            darkItemSelectedColor: '#ffffff',
+            darkItemBg: '#F5F5F5',
+            darkSubMenuItemBg: '#F5F5F5',
+
+            darkItemColor: '#BDBDBD',
+            darkItemHoverColor: '#FFFFFF',
+            darkItemSelectedColor: '#FFFFFF',
+
+            darkItemHoverBg: '#424242',
+            darkItemSelectedBg: '#424242',
+
+            darkDangerItemColor: '#BDBDBD',
+            darkDangerItemHoverColor: '#FFFFFF',
         },
 
         Card: {
-            colorBgContainer: '#111827',
+            colorBgContainer: '#FFFFFF',
         },
 
         Table: {
-            colorBgContainer: '#111827',
-            headerBg: '#1f2937',
-            rowHoverBg: '#1e293b',
-            borderColor: '#374151',
+            colorBgContainer: '#FFFFFF',
+            headerBg: '#F5F5F5',
+            headerColor: '#212121',
+            rowHoverBg: '#FAFAFA',
+            borderColor: '#E0E0E0',
         },
 
+
         Input: {
-            colorBgContainer: '#111827',
-            activeBorderColor: '#6366f1',
-            hoverBorderColor: '#818cf8',
+            colorBgContainer: '#FFFFFF',
+            colorBorder: '#E0E0E0',
+
+            activeBorderColor: '#212121',
+            hoverBorderColor: '#757575',
+
+            colorText: '#212121',
+            colorTextPlaceholder: '#9E9E9E',
+        },
+
+        InputNumber: {
+            colorBgContainer: '#FFFFFF',
+            colorBorder: '#E0E0E0',
+
+            activeBorderColor: '#212121',
+            hoverBorderColor: '#757575',
         },
 
         Select: {
-            colorBgContainer: '#111827',
+            colorBgContainer: '#FFFFFF',
+            colorBorder: '#E0E0E0',
+
+            optionSelectedBg: '#F5F5F5',
+            optionActiveBg: '#FAFAFA',
         },
 
-        Modal: {
-            contentBg: '#111827',
-            headerBg: '#111827',
-        },
+        DatePicker: {
+            colorBgContainer: '#FFFFFF',
+            colorBorder: '#E0E0E0',
 
-        Drawer: {
-            colorBgElevated: '#111827',
+            activeBorderColor: '#212121',
+            hoverBorderColor: '#757575',
         },
 
         Button: {
             primaryShadow: 'none',
         },
+
+        Modal: {
+            contentBg: '#FFFFFF',
+            headerBg: '#FFFFFF',
+            footerBg: '#FFFFFF',
+        },
+
+        Drawer: {
+            colorBgElevated: '#FFFFFF',
+        },
+
+        Dropdown: {
+            colorBgElevated: '#FFFFFF',
+        },
+
+        Popover: {
+            colorBgElevated: '#FFFFFF',
+        },
+
+        Tooltip: {
+            colorBgSpotlight: '#212121',
+            colorTextLightSolid: '#FFFFFF',
+        },
+
+        Tag: {
+            defaultBg: '#F5F5F5',
+            defaultColor: '#212121',
+        },
+
+        Pagination: {
+            itemBg: '#FFFFFF',
+            itemActiveBg: '#212121',
+            itemLinkBg: '#FFFFFF',
+            itemActiveColor: '#FFFFFF',
+            itemActiveColorDisabled: '#9E9E9E',
+            itemActiveColorHover: '#757575',
+        },
+
+        Form: {
+            labelColor: '#212121',
+        },
+
+        Breadcrumb: {
+            itemColor: '#757575',
+            lastItemColor: '#212121',
+            linkColor: '#757575',
+            linkHoverColor: '#212121',
+        },
+
+        Tabs: {
+            itemColor: '#757575',
+            itemHoverColor: '#212121',
+            itemSelectedColor: '#212121',
+            inkBarColor: '#212121',
+            cardBg: '#FFFFFF',
+        },
+
+        Typography: {
+            titleMarginBottom: 0
+        }
     },
 };

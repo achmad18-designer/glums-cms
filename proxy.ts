@@ -4,39 +4,46 @@ const PUBLIC_ROUTES = ['/login'];
 
 export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const dashboardUrl = new URL('/cms/dashboard', request.url)
 
-    const isPublicRoute = PUBLIC_ROUTES.some(
-        (route) =>
-            pathname === route ||
-            pathname.startsWith(`${route}/`),
-    );
-
-    const isCmsRoute =
-        pathname === '/cms' ||
-        pathname.startsWith('/cms/');
-
-    if (!isCmsRoute) {
-        return NextResponse.next();
+    if (pathname === '/' || pathname === '/cms') {
+        return NextResponse.redirect(dashboardUrl);
     }
 
-    const refreshToken = request.cookies.get('refreshToken')?.value;
+    // const isPublicRoute = PUBLIC_ROUTES.some(
+    //     (route) =>
+    //         pathname === route ||
+    //         pathname.startsWith(`${route}/`),
+    // );
 
-    if (!refreshToken && !isPublicRoute) {
-        const loginUrl = new URL('/login', request.url);
+    // const isCmsRoute =
+    //     pathname === '/cms' ||
+    //     pathname.startsWith('/cms/');
 
-        loginUrl.searchParams.set(
-            'callbackUrl',
-            pathname,
-        );
+    // if (!isCmsRoute) {
+    //     return NextResponse.next();
+    // }
 
-        return NextResponse.redirect(loginUrl);
-    }
+    // const refreshToken = request.cookies.get('refreshToken')?.value;
+
+    // if (!refreshToken && !isPublicRoute) {
+    //     const loginUrl = new URL('/auth/login', request.url);
+
+    //     loginUrl.searchParams.set(
+    //         'callbackUrl',
+    //         pathname,
+    //     );
+
+    //     return NextResponse.redirect(loginUrl);
+    // }
 
     return NextResponse.next();
 }
 
 export const config = {
     matcher: [
-        '/cms/:path*',
+        '/',
+        '/cms',
+        // '/cms/:path*',
     ],
 };
