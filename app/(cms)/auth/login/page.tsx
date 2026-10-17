@@ -1,11 +1,37 @@
 "use client";
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input } from 'antd';
+import { Button, Card, Form, Input, message } from 'antd';
 import { LoginType } from './types/login.type';
+import { useRouter } from 'next/navigation';
+import { useLoginMutation } from './hooks/useLoginMutation';
+import axios from 'axios';
 
 export default function LoginPage() {
+    const router = useRouter();
+    const loginMutation = useLoginMutation();
+
     const onFinish = (values: LoginType) => {
-        console.log('Received values of form: ', values);
+        loginMutation.mutate(values, {
+            onSuccess: (response) => {
+                message.success(
+                    response.message || "Login successful"
+                );
+
+                router.replace("/cms/dashboard");
+            },
+
+            onError: (error) => {
+                if (axios.isAxiosError(error)) {
+                    message.error(
+                        error.response?.data?.message ||
+                        "Login failed. Please try again."
+                    );
+                    return;
+                }
+
+                message.error("An unexpected error occurred");
+            },
+        });
     };
 
     return (

@@ -1,5 +1,6 @@
 "use client";
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import ProfileMenu from '@/components/ui/ProfileMenu';
 import { MENUS } from '@/config/menu';
 import { useGetLabelPage } from '@/hooks/useGetLabelPage';
 import {
@@ -18,6 +19,7 @@ interface Props {
     readonly children: React.ReactNode
 }
 export default function LayoutCMS({ children }: Props) {
+
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
@@ -44,7 +46,9 @@ export default function LayoutCMS({ children }: Props) {
         router.push(key);
     };
 
+
     return (
+
         <Layout>
             <Sider trigger={null} collapsible collapsed={collapsed}>
                 <div className="w-full h-23 flex items-center justify-center " >
@@ -79,6 +83,9 @@ export default function LayoutCMS({ children }: Props) {
                             transform: 'translateX(-46px)',
                         }}
                     />
+                    <Flex justify="end">
+                        <ProfileMenu />
+                    </Flex>
                 </Header>
                 <Content
                     style={{
@@ -97,6 +104,6 @@ export default function LayoutCMS({ children }: Props) {
                     </div>
                 </Content>
             </Layout>
-        </Layout>
+        </Layout >
     )
 }

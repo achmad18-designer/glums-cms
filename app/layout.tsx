@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AntdProvider from "@/components/providers/AntdProvider";
 import AxiosProvider from "@/components/providers/AxiosProvider";
+import QueryProvider from "@/components/providers/QueryProvider";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,9 +61,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <AntdProvider>
-          <AxiosProvider>
-            {children}
-          </AxiosProvider>
+          <NotificationProvider>
+            <AxiosProvider>
+              <QueryProvider>
+                {children}
+              </QueryProvider>
+            </AxiosProvider>
+          </NotificationProvider>
         </AntdProvider>
       </body>
     </html>

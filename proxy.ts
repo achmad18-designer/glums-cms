@@ -1,49 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login'];
+import { NextRequest, NextResponse } from "next/server";
+
+const PUBLIC_ROUTES = ["/auth/login"];
+
+const LOGIN_URL = "/auth/login";
+const DASHBOARD_URL = "/cms/dashboard";
 
 export function proxy(request: NextRequest) {
-    const { pathname } = request.nextUrl;
-    const dashboardUrl = new URL('/cms/dashboard', request.url)
+    const { pathname, search } = request.nextUrl;
 
-    if (pathname === '/' || pathname === '/cms') {
-        return NextResponse.redirect(dashboardUrl);
+    const refreshToken = request.cookies.get("refreshToken")?.value;
+
+    const isPublicRoute = PUBLIC_ROUTES.some(
+        (route) =>
+            pathname === route ||
+            pathname.startsWith(`${route}/`),
+    );
+
+    const isCmsRoute =
+        pathname === "/cms" ||
+        pathname.startsWith("/cms/");
+
+    // Redirect root to the appropriate page.
+    if (pathname === "/") {
+        return NextResponse.redirect(
+            new URL(
+                refreshToken ? DASHBOARD_URL : LOGIN_URL,
+                request.url,
+            ),
+        );
     }
 
-    // const isPublicRoute = PUBLIC_ROUTES.some(
-    //     (route) =>
-    //         pathname === route ||
-    //         pathname.startsWith(`${route}/`),
-    // );
+    // Redirect /cms to the dashboard.
+    if (pathname === "/cms") {
+        return NextResponse.redirect(
+            new URL(DASHBOARD_URL, request.url),
+        );
+    }
 
-    // const isCmsRoute =
-    //     pathname === '/cms' ||
-    //     pathname.startsWith('/cms/');
+    // Redirect authenticated users away from the login page.
+    if (isPublicRoute && refreshToken) {
+        return NextResponse.redirect(
+            new URL(DASHBOARD_URL, request.url),
+        );
+    }
 
-    // if (!isCmsRoute) {
-    //     return NextResponse.next();
-    // }
+    // Allow non-CMS routes to continue.
+    if (!isCmsRoute) {
+        return NextResponse.next();
+    }
 
-    // const refreshToken = request.cookies.get('refreshToken')?.value;
+    // Redirect unauthenticated users to login.
+    if (!refreshToken) {
+        const loginUrl = new URL(LOGIN_URL, request.url);
 
-    // if (!refreshToken && !isPublicRoute) {
-    //     const loginUrl = new URL('/auth/login', request.url);
+        loginUrl.searchParams.set(
+            "callbackUrl",
+            `${pathname}${search}`,
+        );
 
-    //     loginUrl.searchParams.set(
-    //         'callbackUrl',
-    //         pathname,
-    //     );
-
-    //     return NextResponse.redirect(loginUrl);
-    // }
+        return NextResponse.redirect(loginUrl);
+    }
 
     return NextResponse.next();
 }
 
 export const config = {
     matcher: [
-        '/',
-        '/cms',
-        // '/cms/:path*',
+        "/",
+        "/cms",
+        "/cms/:path*",
+        "/auth/login",
     ],
 };

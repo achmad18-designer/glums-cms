@@ -15,3 +15,15 @@ export interface ProjectType {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface ProjectPayloadType {
+    name: string;
+    serviceId: number;
+    desc: string;
+    caseStudy: string;
+    why: string;
+    logoProjectPath: string;
+    bannerProjectPath: string;
+    imgWhyPath: string;
+    images: string;
+}

@@ -1,247 +1,481 @@
-import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
+"use client";
+
+import {
+  PlusOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import type { UploadFile, UploadProps } from "antd";
 import {
   Button,
-  Checkbox,
-  Col,
-  ColorPicker,
+  Card,
   Form,
-  InputNumber,
+  Image,
+  Input,
   Modal,
-  Radio,
-  Rate,
-  Row,
   Select,
-  Slider,
   Space,
-  Switch,
+  Typography,
   Upload
-} from 'antd';
-import { useModal } from '../hooks/useModal';
-import { useEffect } from 'react';
+} from "antd";
+import { useEffect, useState } from "react";
 
-const formItemLayout = {
-  labelCol: { span: 6 },
-  wrapperCol: { span: 14 },
+import { NamePath } from "antd/es/form/interface";
+import { useCreateProjectMutation } from "../hooks/useCreateProjectMutation";
+import { useModal } from "../hooks/useModal";
+import type {
+  ProjectFormValues
+} from "../schemas/project.schema";
+import {
+  projectFormSchema
+} from "../schemas/project.schema";
+import type { ProjectType } from "../types/data.type";
+import { useAppNotification } from "@/components/providers/NotificationProvider";
+
+const { TextArea } = Input;
+const { Title } = Typography;
+
+const MAX_IMAGES = 8;
+
+type ModalFormProps = {
+  project?: ProjectType | null;
 };
 
-const normFile = (e: any) => {
-  console.log('Upload event:', e);
-  if (Array.isArray(e)) {
-    return e;
+const normalizeFileList = (
+  event: { fileList?: UploadFile[] } | UploadFile[],
+): UploadFile[] => {
+  if (Array.isArray(event)) {
+    return event;
   }
-  return e?.fileList;
+
+  return event?.fileList ?? [];
 };
 
-const onFinish = (values: any) => {
-  console.log('Received values of form: ', values);
+/**
+ * Membuat UploadFile dari path gambar yang sudah tersimpan.
+ * File existing tidak perlu di-upload ulang.
+ */
+const getExistingFile = (
+  path: string | null | undefined,
+  index = 0,
+): UploadFile[] => {
+  if (!path) {
+    return [];
+  }
+
+  return [
+    {
+      uid: `existing-${index}-${path}`,
+      name: path.split("/").pop() || `image-${index + 1}`,
+      status: "done",
+      url: path,
+    },
+  ];
 };
 
-const ModalForm = () => {
+
+const ModalForm = ({
+  project = null,
+}: ModalFormProps) => {
+  const notification = useAppNotification();
+  const createProjectMutation = useCreateProjectMutation();
   const modal = useModal((state) => state.modal);
   const closeModal = useModal((state) => state.closeModal);
 
-  const formAction = modal?.formAction ?? "create";
+  const [form] = Form.useForm<ProjectFormValues>();
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+
   const isModalOpen = modal !== null;
-
-  const id = modal?.formAction === "edit" ? modal.id : undefined;
-
-  const handleOk = () => {
-    closeModal();
-  };
-
-  const handleCancel = () => {
-    closeModal();
-  };
+  const isEdit = modal?.formAction === "edit";
 
   useEffect(() => {
-    if (modal?.formAction === "edit") {
-      console.log("Edit project:", id);
+    if (!isModalOpen) {
+      return;
     }
-  }, [modal, id]);
+
+    if (isEdit && project) {
+      form.setFieldsValue({
+        name: project.name,
+        serviceId: project.serviceId,
+        desc: project.desc,
+        caseStudy: project.caseStudy,
+        why: project.why,
+
+        logo_project: getExistingFile(
+          project.logoProjectPath,
+        ),
+
+        banner_project: getExistingFile(
+          project.bannerProjectPath,
+        ),
+
+        img_why: getExistingFile(
+          project.imgWhyPath,
+        ),
+
+        images: (project.images || "")
+          .split(",")
+          .map((path: string) => path.trim())
+          .filter(Boolean)
+          .map((path: string, index: number) => ({
+            uid: `existing-image-${index}-${path}`,
+            name:
+              path.split("/").pop() ||
+              `image-${index + 1}`,
+            status: "done" as const,
+            url: path,
+          })),
+      });
+    } else if (!isEdit) {
+      form.resetFields();
+    }
+  }, [isModalOpen, isEdit, project, form]);
+
+  const handleCancel = () => {
+    form.resetFields();
+    closeModal();
+  };
+
+  const handlePreview: UploadProps["onPreview"] = async (
+    file,
+  ) => {
+    let src = file.url || file.thumbUrl;
+
+    if (!src && file.originFileObj) {
+      src = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            resolve(reader.result);
+          } else {
+            reject(new Error("Unable to preview image"));
+          }
+        };
+
+        reader.onerror = () => {
+          reject(reader.error);
+        };
+
+        reader.readAsDataURL(file.originFileObj as File);
+      });
+    }
+
+    if (src) {
+      setPreviewImage(src);
+      setPreviewOpen(true);
+    }
+  };
+
+  const singleImageUploadProps: UploadProps = {
+    name: "file",
+    listType: "picture",
+    accept: "image/*",
+    maxCount: 1,
+    beforeUpload: () => false
+  };
+
+
+  const buildProjectFormData = (
+    values: ProjectFormValues,
+  ): FormData => {
+    const formData = new FormData();
+
+    formData.append("name", values.name);
+    formData.append("desc", values.desc);
+    formData.append("caseStudy", values.caseStudy);
+    formData.append("why", values.why);
+    formData.append("serviceId", String(values.serviceId));
+
+    const appendFile = (
+      fieldName: string,
+      file?: UploadFile,
+    ) => {
+      if (file?.originFileObj) {
+        formData.append(
+          fieldName,
+          file.originFileObj,
+        );
+      }
+    };
+
+    appendFile("logo_project", values.logo_project?.[0]);
+    appendFile("banner_project", values.banner_project?.[0]);
+    appendFile("img_why", values.img_why?.[0]);
+
+    (values.images ?? []).forEach((file) => {
+      if (file.originFileObj) {
+        formData.append("images", file.originFileObj);
+      }
+    });
+
+    return formData;
+  };
+
+  const handleFinish = async (
+    values: ProjectFormValues,
+  ) => {
+    // 1. Validasi input form menggunakan Zod.
+    const formResult = projectFormSchema.safeParse(values);
+
+    if (!formResult.success) {
+      form.setFields(
+        formResult.error.issues.map((issue) => ({
+          name: issue.path as NamePath,
+          errors: [issue.message],
+        })),
+      );
+
+      return;
+    }
+
+    // 2. Buat FormData.
+    const formData = buildProjectFormData(formResult.data);
+
+    createProjectMutation.mutate(formData, {
+      onSuccess: () => {
+        closeModal();
+        form.resetFields();
+        notification.success({
+          title: "Success",
+          description: "Project created successfully",
+        });
+      },
+    });
+  };
 
   return (
-    <Modal
-      title={formAction === "create" ? "Create Project" : "Edit Project"}
-      closable={{ 'aria-label': 'Custom Close Button' }}
-      open={isModalOpen}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      width={765}
-    >
-      <Form
-        name="validate_other"
-        {...formItemLayout}
-        onFinish={onFinish}
-        initialValues={{
-          'input-number': 3,
-          'checkbox-group': ['A', 'B'],
-          rate: 3.5,
-          'color-picker': null,
-        }}
-        style={{ maxWidth: 600 }}
+    <>
+      <Modal
+        title={isEdit ? "Edit Project" : "Create Project"}
+        open={isModalOpen}
+        onCancel={handleCancel}
+        footer={null}
+        width={765}
+        destroyOnHidden
       >
-        <Form.Item label="Plain Text">
-          <span className="ant-form-text">China</span>
-        </Form.Item>
-        <Form.Item
-          name="select"
-          label="Select"
-          hasFeedback
-          rules={[{ required: true, message: 'Please select your country!' }]}
+        <Form<ProjectFormValues>
+          form={form}
+          layout="vertical"
+          onFinish={handleFinish}
+          initialValues={{
+            logo_project: [],
+            banner_project: [],
+            img_why: [],
+            images: [],
+          }}
         >
-          <Select
-            placeholder="Please select a country"
-            options={[
-              { label: 'China', value: 'china' },
-              { label: 'U.S.A', value: 'usa' },
-            ]}
-          />
-        </Form.Item>
+          <Space orientation="vertical" size="medium" style={{ display: 'flex' }}>
 
-        <Form.Item
-          name="select-multiple"
-          label="Select[multiple]"
-          rules={[{ required: true, message: 'Please select your favourite colors!', type: 'array' }]}
-        >
-          <Select
-            mode="multiple"
-            placeholder="Please select favourite colors"
-            options={[
-              { label: 'Red', value: 'red' },
-              { label: 'Green', value: 'green' },
-              { label: 'Blue', value: 'blue' },
-            ]}
-          />
-        </Form.Item>
+            <Form.Item
+              label="Project Name"
+              name="name"
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Please input your project name!",
+                },
+              ]}
+            >
+              <Input placeholder="Glums ID" />
+            </Form.Item>
 
-        <Form.Item label="InputNumber">
-          <Form.Item name="input-number" noStyle>
-            <InputNumber min={1} max={10} />
-          </Form.Item>
-          <span className="ant-form-text" style={{ marginInlineStart: 8 }}>
-            machines
-          </span>
-        </Form.Item>
+            <Form.Item
+              name="serviceId"
+              label="Service Type"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select service type!",
+                },
+              ]}
+            >
+              <Select
+                placeholder="Please select a service type"
+                options={[
+                  {
+                    label: "Graphic Designing",
+                    value: 15,
+                  },
+                  {
+                    label: "Digital Marketing",
+                    value: 17,
+                  },
+                ]}
+              />
+            </Form.Item>
 
-        <Form.Item name="switch" label="Switch" valuePropName="checked">
-          <Switch />
-        </Form.Item>
+            <Card variant="borderless">
+              <Title level={5} style={{ marginBottom: 20 }}>
+                Project Detail
+              </Title>
 
-        <Form.Item name="slider" label="Slider">
-          <Slider
-            marks={{
-              0: 'A',
-              20: 'B',
-              40: 'C',
-              60: 'D',
-              80: 'E',
-              100: 'F',
-            }}
-          />
-        </Form.Item>
+              <Form.Item
+                label="Description"
+                name="desc"
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message:
+                      "Please input your project description!",
+                  },
+                ]}
+              >
+                <TextArea rows={4} />
+              </Form.Item>
 
-        <Form.Item name="radio-group" label="Radio.Group">
-          <Radio.Group>
-            <Radio value="a">item 1</Radio>
-            <Radio value="b">item 2</Radio>
-            <Radio value="c">item 3</Radio>
-          </Radio.Group>
-        </Form.Item>
+              <Form.Item
+                label="Case Study"
+                name="caseStudy"
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "Please input your case study!",
+                  },
+                ]}
+              >
+                <TextArea rows={4} />
+              </Form.Item>
 
-        <Form.Item
-          name="radio-button"
-          label="Radio.Button"
-          rules={[{ required: true, message: 'Please pick an item!' }]}
-        >
-          <Radio.Group>
-            <Radio.Button value="a">item 1</Radio.Button>
-            <Radio.Button value="b">item 2</Radio.Button>
-            <Radio.Button value="c">item 3</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
+              <Card variant="borderless">
+                <Form.Item
+                  label="Reason"
+                  name="why"
+                  rules={[
+                    {
+                      required: true,
+                      whitespace: true,
+                      message: "Please input the reason!",
+                    },
+                  ]}
+                >
+                  <TextArea rows={4} />
+                </Form.Item>
 
-        <Form.Item name="checkbox-group" label="Checkbox.Group">
-          <Checkbox.Group>
-            <Row>
-              <Col span={8}>
-                <Checkbox value="A" style={{ lineHeight: '32px' }}>
-                  A
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="B" style={{ lineHeight: '32px' }} disabled>
-                  B
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="C" style={{ lineHeight: '32px' }}>
-                  C
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="D" style={{ lineHeight: '32px' }}>
-                  D
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="E" style={{ lineHeight: '32px' }}>
-                  E
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="F" style={{ lineHeight: '32px' }}>
-                  F
-                </Checkbox>
-              </Col>
-            </Row>
-          </Checkbox.Group>
-        </Form.Item>
+                <Form.Item
+                  name="img_why"
+                  label="Reason Image"
+                  valuePropName="fileList"
+                  getValueFromEvent={normalizeFileList}
+                >
+                  <Upload {...singleImageUploadProps}>
+                    <Button icon={<UploadOutlined />}>
+                      Upload Reason Image
+                    </Button>
+                  </Upload>
+                </Form.Item>
+              </Card>
+            </Card>
 
-        <Form.Item name="rate" label="Rate">
-          <Rate />
-        </Form.Item>
+            <Form.Item
+              name="logo_project"
+              label="Logo Project"
+              valuePropName="fileList"
+              getValueFromEvent={normalizeFileList}
+            >
+              <Upload {...singleImageUploadProps}>
+                <Button icon={<UploadOutlined />}>
+                  Upload Logo
+                </Button>
+              </Upload>
+            </Form.Item>
 
-        <Form.Item
-          name="upload"
-          label="Upload"
-          valuePropName="fileList"
-          getValueFromEvent={normFile}
-          extra="longgggggggggggggggggggggggggggggggggg"
-        >
-          <Upload name="logo" action="/upload.do" listType="picture">
-            <Button icon={<UploadOutlined />}>Click to upload</Button>
-          </Upload>
-        </Form.Item>
-        <Form.Item label="Dragger">
-          <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
-            <Upload.Dragger name="files" action="/upload.do">
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Click or drag file to this area to upload</p>
-              <p className="ant-upload-hint">Support for a single or bulk upload.</p>
-            </Upload.Dragger>
-          </Form.Item>
-        </Form.Item>
-        <Form.Item
-          name="color-picker"
-          label="ColorPicker"
-          rules={[{ required: true, message: 'color is required!' }]}
-        >
-          <ColorPicker />
-        </Form.Item>
+            <Form.Item
+              name="banner_project"
+              label="Banner Project"
+              valuePropName="fileList"
+              getValueFromEvent={normalizeFileList}
+            >
+              <Upload {...singleImageUploadProps}>
+                <Button icon={<UploadOutlined />}>
+                  Upload Banner
+                </Button>
+              </Upload>
+            </Form.Item>
 
-        <Form.Item label={null}>
-          <Space>
-            <Button type="primary" htmlType="submit">
-              Submit
-            </Button>
-            <Button htmlType="reset">reset</Button>
+            <Form.Item
+              name="images"
+              label="Other Images"
+              valuePropName="fileList"
+              getValueFromEvent={normalizeFileList}
+            >
+              <Upload
+                name="file"
+                listType="picture-card"
+                accept="image/*"
+                multiple
+                maxCount={MAX_IMAGES}
+                onPreview={handlePreview}
+                beforeUpload={() => false}
+              >
+                <button
+                  type="button"
+                  style={{
+                    border: 0,
+                    background: "none",
+                  }}
+                >
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>
+                    Upload
+                  </div>
+                </button>
+              </Upload>
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button
+                  loading={createProjectMutation.isPending}
+                  disabled={createProjectMutation.isPending}
+                  type="primary"
+                  htmlType="submit">
+                  {isEdit ? "Update Project" : "Create Project"}
+                </Button>
+
+                <Button
+                  htmlType="button"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  htmlType="button"
+                  onClick={() => form.resetFields()}
+                >
+                  Reset
+                </Button>
+              </Space>
+            </Form.Item>
           </Space>
-        </Form.Item>
-      </Form>
-    </Modal>
-  )
-}
+        </Form>
+      </Modal>
 
-export default ModalForm
+      <Image
+        alt="Project image preview"
+        src={previewImage}
+        styles={{
+          root: {
+            display: "none",
+          },
+        }}
+        preview={{
+          open: previewOpen,
+          onOpenChange: setPreviewOpen,
+          afterOpenChange: (open) => {
+            if (!open) {
+              setPreviewImage("");
+            }
+          },
+        }}
+      />
+    </>
+  );
+};
+
+export default ModalForm;

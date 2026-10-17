@@ -5,6 +5,7 @@ import {
     AppstoreOutlined,
     ToolOutlined,
     TeamOutlined,
+    LogoutOutlined,
 } from "@ant-design/icons";
 
 export const MENUS: MenuProps["items"] = [
