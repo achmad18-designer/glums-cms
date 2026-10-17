@@ -77,10 +77,12 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
 
 interface Props {
     data: ProjectType[]
+    loading?: boolean
 }
 
 const Table: React.FC<Props> = ({
-    data
+    data,
+    loading
 }) => {
     const openEdit = useModal((state) => state.openEdit);
 
@@ -100,6 +102,12 @@ const Table: React.FC<Props> = ({
                 handleEdit
             })}
             dataSource={data}
+            loading={loading}
+            pagination={
+                {
+                    pageSize: 8,
+                }
+            }
         />
     )
 }
