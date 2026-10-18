@@ -10,7 +10,7 @@ export function useCreateProjectMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (formData: FormData) => {
+        mutationFn: async (formData: FormData): Promise<ProjectType> => {
             const response = await apiClient.post<ApiResponse<ProjectType>>(
                 "/api/v1/projects",
                 formData,

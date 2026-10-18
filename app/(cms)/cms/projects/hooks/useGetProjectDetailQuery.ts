@@ -15,7 +15,7 @@ export default function useGetProjectDetail(
 ) {
   return useQuery({
     queryKey: projectDetailQueryKey(id ?? 0),
-    queryFn: async () => {
+    queryFn: async (): Promise<ProjectType> => {
       const response = await apiClient.get<ApiResponse<ProjectType>>(
         `/api/v1/projects/${id}`,
       );

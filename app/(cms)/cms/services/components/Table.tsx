@@ -5,10 +5,13 @@ import dayjs from 'dayjs';
 import { useModal } from '../hooks/useModal';
 import { ColumnsType } from '../types/column.type';
 import { ServiceType } from '../types/data.type';
+import { useAppNotification } from '@/components/providers/NotificationProvider';
+import useDeleteServiceMutation from '../hooks/useDeleteProjectMutation';
 
 type columnAction = {
     handleDelete: (id: number) => void,
-    handleEdit: (id: number) => void
+    handleEdit: (id: number) => void,
+    deletingId?: number;
 }
 
 const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
@@ -51,6 +54,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                         onClick={() => columnAction.handleEdit(record.id)}
                         type="primary"
                         icon={<EditFilled />}
+                        disabled={columnAction.deletingId === record.id}
                     >
                         Edit
                     </Button>
@@ -65,6 +69,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                             type="primary"
                             icon={<DeleteFilled />}
                             danger
+                            loading={columnAction.deletingId === record.id}
                         >
                             Delete
                         </Button>
@@ -77,16 +82,33 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
 
 interface Props {
     data: ServiceType[]
+    loading?: boolean
 }
 
 const Table: React.FC<Props> = ({
-    data
+    data,
+    loading
 }) => {
+    const deleteMutation = useDeleteServiceMutation();
     const openEdit = useModal((state) => state.openEdit);
+    const notification = useAppNotification();
 
     const handleDelete = (id: number) => {
-        console.log('delete: ', id);
-    }
+        deleteMutation.mutate(id, {
+            onSuccess: () => {
+                notification.success({
+                    description: "Service deleted successfully",
+                });
+            },
+            onError: (error) => {
+                console.error("Delete Service error:", error);
+                notification.error({
+                    title: "Failed to delete Service",
+                    description: error.message,
+                });
+            },
+        });
+    };
 
     const handleEdit = (id: number) => {
         openEdit(id);
@@ -97,9 +119,18 @@ const Table: React.FC<Props> = ({
             rowKey="id"
             columns={columns({
                 handleDelete,
-                handleEdit
+                handleEdit,
+                deletingId: deleteMutation.isPending
+                    ? deleteMutation.variables
+                    : undefined,
             })}
             dataSource={data}
+            loading={loading}
+            pagination={
+                {
+                    pageSize: 8,
+                }
+            }
         />
     )
 }

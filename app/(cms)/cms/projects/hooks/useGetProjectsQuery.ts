@@ -11,7 +11,7 @@ export const PROJECTS_QUERY_KEY = ["projects"] as const;
 export default function useGetListProject() {
   return useQuery({
     queryKey: PROJECTS_QUERY_KEY,
-    queryFn: async () => {
+    queryFn: async (): Promise<ProjectType[]> => {
       const response = await apiClient.get<ApiResponse<ProjectType[]>>(
         "/api/v1/projects",
       );

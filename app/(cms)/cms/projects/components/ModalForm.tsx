@@ -34,6 +34,7 @@ import {
   projectFormSchema
 } from "../schemas/project.schema";
 import useGetListServicesQuery from "../hooks/useGetListServicesQuery";
+import { useUpdateProjectMutation } from "../hooks/useUpdateProjectMutation";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -77,6 +78,8 @@ const getExistingFile = (
 const ModalForm = () => {
   const notification = useAppNotification();
   const createProjectMutation = useCreateProjectMutation();
+  const updateProjectMutation = useUpdateProjectMutation();
+
   const modal = useModal((state) => state.modal);
   const closeModal = useModal((state) => state.closeModal);
 
@@ -88,7 +91,7 @@ const ModalForm = () => {
   const isModalOpen = modal !== null;
   const isEdit = modal?.formAction === "edit";
 
-  const projectId = isEdit ? modal.id : undefined;
+  const projectId: number | undefined = isEdit ? modal.id : undefined;
 
   const servicesListData = useGetListServicesQuery()
 
@@ -237,16 +240,45 @@ const ModalForm = () => {
     // 2. Buat FormData.
     const formData = buildProjectFormData(formResult.data);
 
-    createProjectMutation.mutate(formData, {
-      onSuccess: () => {
-        closeModal();
-        form.resetFields();
-        notification.success({
-          title: "Success",
-          description: "Project created successfully",
-        });
-      },
-    });
+    if (isEdit && projectId) {
+      updateProjectMutation.mutate({ id: projectId, formData }, {
+        onSuccess: () => {
+          closeModal();
+          form.resetFields();
+          notification.success({
+            title: "Success",
+            description: "Project updated successfully",
+          });
+        },
+
+        onError: (error) => {
+          console.error("Update project error:", error);
+          notification.error({
+            title: "Failed to update project",
+            description: error.message,
+          });
+        }
+      });
+    } else {
+      createProjectMutation.mutate(formData, {
+        onSuccess: () => {
+          closeModal();
+          form.resetFields();
+          notification.success({
+            title: "Success",
+            description: "Project created successfully",
+          });
+        },
+        onError: (error) => {
+          console.error("Create project error:", error);
+          notification.error({
+            title: "Failed to Create project",
+            description: error.message,
+          });
+        }
+      });
+    }
+
   };
 
 
@@ -450,7 +482,7 @@ const ModalForm = () => {
                 <Button
                   loading={createProjectMutation.isPending}
                   disabled={
-                    createProjectMutation.isPending ||
+                    createProjectMutation.isPending || updateProjectMutation.isPending ||
                     (isEdit && (isDetailLoading || isDetailError || !project))
                   }
                   type="primary"
@@ -463,7 +495,7 @@ const ModalForm = () => {
                   htmlType="button"
                   onClick={handleCancel}
                   disabled={
-                    createProjectMutation.isPending ||
+                    createProjectMutation.isPending || updateProjectMutation.isPending ||
                     (isEdit && (isDetailLoading || isDetailError || !project))
                   }
                 >
@@ -474,7 +506,7 @@ const ModalForm = () => {
                   htmlType="button"
                   onClick={() => form.resetFields()}
                   disabled={
-                    createProjectMutation.isPending ||
+                    createProjectMutation.isPending || updateProjectMutation.isPending ||
                     (isEdit && (isDetailLoading || isDetailError || !project))
                   }
                 >
