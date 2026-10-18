@@ -1,9 +1,9 @@
 "use client";
 
+import { useLogoutMutation } from '@/hooks/useLogoutMutation';
 import { LogoutOutlined, SettingOutlined } from '@ant-design/icons';
 import type { DropdownProps, MenuProps } from 'antd';
 import { Button, Dropdown } from 'antd';
-import { useRouter } from 'next/navigation';
 import React from 'react';
 
 type MenuTypeAction = {
@@ -38,7 +38,7 @@ const items = ({
     ];
 
 const ProfileMenu: React.FC = () => {
-    const router = useRouter();
+    const logoutMutation = useLogoutMutation();
     const modalProfileSetting = () => {
         console.log('modalProfileSetting');
     };
@@ -47,7 +47,7 @@ const ProfileMenu: React.FC = () => {
         menu: {
             items: items(
                 {
-                    actionLogout: () => router.push('/auth/login'),
+                    actionLogout: () => logoutMutation.mutate(),
                     actionSetting: modalProfileSetting
                 }
             )
