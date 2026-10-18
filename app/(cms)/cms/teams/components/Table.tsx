@@ -4,11 +4,13 @@ import { Table as AntTable, Button, Flex, Popconfirm } from 'antd';
 import dayjs from 'dayjs';
 import { useModal } from '../hooks/useModal';
 import { ColumnsType } from '../types/column.type';
-import { ProjectType } from '../types/data.type';
+import { TeamType } from '../types/data.type';
+import useDeleteTeamMutation from '../hooks/useDeleteTeamMutation';
 
 type columnAction = {
     handleDelete: (id: number) => void,
-    handleEdit: (id: number) => void
+    handleEdit: (id: number) => void,
+    deletingId?: number;
 }
 
 const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
@@ -25,13 +27,13 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
     {
         title: 'Email',
         dataIndex: 'email',
-        sorter: (a, b) => a.name.length - b.name.length,
+        sorter: (a, b) => a.email.length - b.email.length,
         sortDirections: ['descend'],
     },
     {
         title: 'Role',
         dataIndex: 'role',
-        sorter: (a, b) => a.name.length - b.name.length,
+        sorter: (a, b) => a.role.length - b.role.length,
         sortDirections: ['descend'],
     },
     {
@@ -63,6 +65,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                         onClick={() => columnAction.handleEdit(record.id)}
                         type="primary"
                         icon={<EditFilled />}
+                        disabled={columnAction.deletingId === record.id}
                     >
                         Edit
                     </Button>
@@ -77,6 +80,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                             type="primary"
                             icon={<DeleteFilled />}
                             danger
+                            loading={columnAction.deletingId === record.id}
                         >
                             Delete
                         </Button>
@@ -88,17 +92,20 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
 ];
 
 interface Props {
-    data: ProjectType[]
+    data: TeamType[]
+    loading?: boolean
 }
 
 const Table: React.FC<Props> = ({
-    data
+    data,
+    loading
 }) => {
+    const deleteMutation = useDeleteTeamMutation();
     const openEdit = useModal((state) => state.openEdit);
 
     const handleDelete = (id: number) => {
-        console.log('delete: ', id);
-    }
+        deleteMutation.mutate(id);
+    };
 
     const handleEdit = (id: number) => {
         openEdit(id);
@@ -109,9 +116,18 @@ const Table: React.FC<Props> = ({
             rowKey="id"
             columns={columns({
                 handleDelete,
-                handleEdit
+                handleEdit,
+                deletingId: deleteMutation.isPending
+                    ? deleteMutation.variables
+                    : undefined,
             })}
             dataSource={data}
+            loading={loading}
+            pagination={
+                {
+                    pageSize: 8,
+                }
+            }
         />
     )
 }

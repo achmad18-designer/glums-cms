@@ -7,38 +7,17 @@ import { useCallback } from 'react';
 import ModalForm from './components/ModalForm';
 import Table from './components/Table';
 import { useModal } from './hooks/useModal';
-import { ProjectType } from './types/data.type';
+import { TeamType } from './types/data.type';
+import useGetListTeamQuery from './hooks/useGetListTeamsQuery';
 
-const data = [
-    {
-        "id": 22,
-        "name": "Fadil F",
-        "username": "fadilf@email.com",
-        "role": "developer",
-        "desc": "ini adalah deskripsi",
-        "email": "fadilf@email.com",
-        "img": "test-img-transaction-3.jpeg",
-        "imgPath": "https://0yokw9ghgueyl1md.public.blob.vercel-storage.com/b703c716-5f39-4a51-91b1-4b0607519cbf-test-img-transaction-3.jpeg",
-        "createdAt": "2026-10-08T07:09:29.821Z",
-        "updatedAt": "2026-10-08T07:09:29.821Z"
-    },
-    {
-        "id": 18,
-        "name": "Jhon Doe",
-        "username": "johndoe@email.com",
-        "role": "developer",
-        "desc": "ini adalah deskripsi",
-        "email": "johndoe@email.com",
-        "img": "johan-1.png",
-        "imgPath": "https://0yokw9ghgueyl1md.public.blob.vercel-storage.com/dd84a3e8-9fd2-4b37-b76b-605af69d80f7-johan-1.png",
-        "createdAt": "2026-10-01T08:18:48.364Z",
-        "updatedAt": "2026-10-01T08:18:48.364Z"
-    },
-];
 
 export default function TeamsPage() {
+    const {
+        data = [],
+        isLoading
+    } = useGetListTeamQuery();
     const getSearchValue = useCallback(
-        (project: ProjectType) =>
+        (project: TeamType) =>
             [
                 project.name,
             ]
@@ -71,7 +50,10 @@ export default function TeamsPage() {
                 </Flex>
 
                 {/* table */}
-                <Table data={filteredData} />
+                <Table
+                    loading={isLoading}
+                    data={filteredData}
+                />
             </Flex>
         </Card>
     )

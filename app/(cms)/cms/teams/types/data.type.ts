@@ -1,4 +1,4 @@
-export interface ProjectType {
+export interface TeamType {
     id: number;
     name: string;
     email: string;

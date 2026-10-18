@@ -6,7 +6,7 @@ import { useModal } from '../hooks/useModal';
 import { ColumnsType } from '../types/column.type';
 import { ServiceType } from '../types/data.type';
 import { useAppNotification } from '@/components/providers/NotificationProvider';
-import useDeleteServiceMutation from '../hooks/useDeleteProjectMutation';
+import useDeleteServiceMutation from '../hooks/useDeleteServiceMutation';
 
 type columnAction = {
     handleDelete: (id: number) => void,

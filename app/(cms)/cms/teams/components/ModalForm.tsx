@@ -1,247 +1,402 @@
-import { InboxOutlined, UploadOutlined } from '@ant-design/icons';
+"use client";
+
 import {
+  UploadOutlined
+} from "@ant-design/icons";
+import type { UploadFile, UploadProps } from "antd";
+import {
+  Alert,
   Button,
-  Checkbox,
-  Col,
-  ColorPicker,
+  Flex,
   Form,
-  InputNumber,
+  Image,
+  Input,
   Modal,
-  Radio,
-  Rate,
-  Row,
-  Select,
-  Slider,
   Space,
-  Switch,
+  Spin,
   Upload
-} from 'antd';
-import { useModal } from '../hooks/useModal';
-import { useEffect } from 'react';
+} from "antd";
+import { useEffect, useState } from "react";
 
-const formItemLayout = {
-  labelCol: { span: 6 },
-  wrapperCol: { span: 14 },
-};
+import { useAppNotification } from "@/components/providers/NotificationProvider";
+import { NamePath } from "antd/es/form/interface";
+import { useCreateTeamMutation } from "../hooks/useCreateTeamMutation";
+import useGetDetailTeamQuery from "../hooks/useGetDetailTeamQuery";
+import { useModal } from "../hooks/useModal";
+import type {
+  TeamFormValues
+} from "../schemas/team.schema";
+import {
+  teamFormSchema
+} from "../schemas/team.schema";
+import { useUpdateTeamMutation } from "../hooks/useUpdateTeamMutation";
 
-const normFile = (e: any) => {
-  console.log('Upload event:', e);
-  if (Array.isArray(e)) {
-    return e;
+const { TextArea } = Input;
+
+const normalizeFileList = (
+  event: { fileList?: UploadFile[] } | UploadFile[],
+): UploadFile[] => {
+  if (Array.isArray(event)) {
+    return event;
   }
-  return e?.fileList;
+
+  return event?.fileList ?? [];
 };
 
-const onFinish = (values: any) => {
-  console.log('Received values of form: ', values);
+/**
+ * Membuat UploadFile dari path gambar yang sudah tersimpan.
+ * File existing tidak perlu di-upload ulang.
+ */
+const getExistingFile = (
+  path: string | null | undefined,
+  index = 0,
+): UploadFile[] => {
+  if (!path) {
+    return [];
+  }
+
+  return [
+    {
+      uid: `existing-${index}-${path}`,
+      name: path.split("/").pop() || `image-${index + 1}`,
+      status: "done",
+      url: path,
+    },
+  ];
 };
+
+
+
 
 const ModalForm = () => {
+  const createTeamMutation = useCreateTeamMutation();
+  const updateTeameMutation = useUpdateTeamMutation();
   const modal = useModal((state) => state.modal);
   const closeModal = useModal((state) => state.closeModal);
 
-  const formAction = modal?.formAction ?? "create";
+  const [form] = Form.useForm<TeamFormValues>();
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
+
+  const handlePreview: UploadProps["onPreview"] = async (
+    file,
+  ) => {
+    let src = file.url || file.thumbUrl;
+
+    if (!src && file.originFileObj) {
+      src = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            resolve(reader.result);
+          } else {
+            reject(new Error("Unable to preview image"));
+          }
+        };
+
+        reader.onerror = () => {
+          reject(reader.error);
+        };
+
+        reader.readAsDataURL(file.originFileObj as File);
+      });
+    }
+
+    if (src) {
+      setPreviewImage(src);
+      setPreviewOpen(true);
+    }
+  };
+
   const isModalOpen = modal !== null;
+  const isEdit = modal?.formAction === "edit";
 
-  const id = modal?.formAction === "edit" ? modal.id : undefined;
+  const userId = isEdit ? modal.id : undefined;
 
-  const handleOk = () => {
-    closeModal();
-  };
-
-  const handleCancel = () => {
-    closeModal();
-  };
+  const {
+    data: user,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+    error: detailError,
+  } = useGetDetailTeamQuery(
+    userId,
+    isModalOpen && isEdit,
+  );
 
   useEffect(() => {
-    if (modal?.formAction === "edit") {
-      console.log("Edit project:", id);
+    if (!isModalOpen) {
+      return;
     }
-  }, [modal, id]);
+
+    // Reset form ketika modal dibuka atau ID edit berubah.
+    form.resetFields();
+
+    if (!isEdit || !user) {
+      return;
+    }
+
+    form.setFieldsValue({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      desc: user.desc,
+      img: getExistingFile(user.imgPath),
+    });
+  }, [isModalOpen, isEdit, userId, user, form]);
+
+  const handleCancel = () => {
+    form.resetFields();
+    closeModal();
+  };
+
+  const singleImageUploadProps: UploadProps = {
+    name: "file",
+    listType: "picture-card",
+    accept: "image/*",
+    maxCount: 1,
+    onPreview: handlePreview,
+    beforeUpload: () => false,
+  };
+
+  const buildProjectFormData = (
+    values: TeamFormValues,
+  ): FormData => {
+    const formData = new FormData();
+
+    formData.append("name", values.name);
+    formData.append("desc", values.desc);
+    formData.append("email", values.email);
+    formData.append("role", values.role);
+
+    const appendFile = (
+      fieldName: string,
+      file?: UploadFile,
+    ) => {
+      if (file?.originFileObj) {
+        formData.append(
+          fieldName,
+          file.originFileObj,
+        );
+      }
+    };
+
+    appendFile("img", values.img?.[0]);
+
+    return formData;
+  };
+
+  const handleFinish = async (
+    values: TeamFormValues,
+  ) => {
+    // 1. Validasi input form menggunakan Zod.
+    const formResult = teamFormSchema.safeParse(values);
+
+    if (!formResult.success) {
+      form.setFields(
+        formResult.error.issues.map((issue) => ({
+          name: issue.path as NamePath,
+          errors: [issue.message],
+        })),
+      );
+
+      return;
+    }
+
+    // 2. Buat FormData.
+    const formData = buildProjectFormData(formResult.data);
+
+    if (isEdit && userId) {
+      updateTeameMutation.mutate({ id: userId, formData }, {
+        onSuccess: () => {
+          closeModal();
+          form.resetFields();
+        },
+      });
+    } else {
+      createTeamMutation.mutate(formData, {
+        onSuccess: () => {
+          closeModal();
+          form.resetFields();
+        },
+      });
+    }
+
+  };
+
 
   return (
-    <Modal
-      title={formAction === "create" ? "Add User" : "Edit User"}
-      closable={{ 'aria-label': 'Custom Close Button' }}
-      open={isModalOpen}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      width={765}
-    >
-      <Form
-        name="validate_other"
-        {...formItemLayout}
-        onFinish={onFinish}
-        initialValues={{
-          'input-number': 3,
-          'checkbox-group': ['A', 'B'],
-          rate: 3.5,
-          'color-picker': null,
-        }}
-        style={{ maxWidth: 600 }}
+    <>
+      <Modal
+        title={isEdit ? "Edit Team" : "Create Team"}
+        open={isModalOpen}
+        onCancel={handleCancel}
+        footer={null}
+        width={765}
+        destroyOnHidden
       >
-        <Form.Item label="Plain Text">
-          <span className="ant-form-text">China</span>
-        </Form.Item>
-        <Form.Item
-          name="select"
-          label="Select"
-          hasFeedback
-          rules={[{ required: true, message: 'Please select your country!' }]}
+        {
+          isEdit && isDetailLoading && (
+            <Flex justify="center" style={{ padding: 32 }}>
+              <Spin description="Loading service detail" />
+            </Flex>
+          )
+        }
+
+        {
+          isEdit && isDetailError && (
+            <Alert
+              type="error"
+              showIcon
+              title="Failed to load service detail"
+              description={detailError.message}
+            />
+          )
+        }
+        <Form<TeamFormValues>
+          form={form}
+          layout="vertical"
+          onFinish={handleFinish}
         >
-          <Select
-            placeholder="Please select a country"
-            options={[
-              { label: 'China', value: 'china' },
-              { label: 'U.S.A', value: 'usa' },
-            ]}
-          />
-        </Form.Item>
+          <Space orientation="vertical" size="medium" style={{ display: 'flex' }}>
 
-        <Form.Item
-          name="select-multiple"
-          label="Select[multiple]"
-          rules={[{ required: true, message: 'Please select your favourite colors!', type: 'array' }]}
-        >
-          <Select
-            mode="multiple"
-            placeholder="Please select favourite colors"
-            options={[
-              { label: 'Red', value: 'red' },
-              { label: 'Green', value: 'green' },
-              { label: 'Blue', value: 'blue' },
-            ]}
-          />
-        </Form.Item>
+            <Form.Item
+              label="Name"
+              name="name"
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Please input your name!",
+                },
+              ]}
+            >
+              <Input placeholder="Jhon Doe" />
+            </Form.Item>
 
-        <Form.Item label="InputNumber">
-          <Form.Item name="input-number" noStyle>
-            <InputNumber min={1} max={10} />
-          </Form.Item>
-          <span className="ant-form-text" style={{ marginInlineStart: 8 }}>
-            machines
-          </span>
-        </Form.Item>
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Please input your email!",
+                },
+                {
+                  type: "email",
+                  message: "Please input valid email!",
+                },
+              ]}
+            >
+              <Input placeholder="jL4kS@example.com" />
+            </Form.Item>
 
-        <Form.Item name="switch" label="Switch" valuePropName="checked">
-          <Switch />
-        </Form.Item>
+            <Form.Item
+              label="Role"
+              name="role"
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Please input your role!",
+                }
+              ]}
+            >
+              <Input placeholder="Software Engineer" />
+            </Form.Item>
 
-        <Form.Item name="slider" label="Slider">
-          <Slider
-            marks={{
-              0: 'A',
-              20: 'B',
-              40: 'C',
-              60: 'D',
-              80: 'E',
-              100: 'F',
-            }}
-          />
-        </Form.Item>
+            <Form.Item
+              label="Description"
+              name="desc"
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Please input description!",
+                }
+              ]}
+            >
+              <TextArea rows={2} placeholder="Lorem ipsum dolor sit amet" />
+            </Form.Item>
 
-        <Form.Item name="radio-group" label="Radio.Group">
-          <Radio.Group>
-            <Radio value="a">item 1</Radio>
-            <Radio value="b">item 2</Radio>
-            <Radio value="c">item 3</Radio>
-          </Radio.Group>
-        </Form.Item>
+            <Form.Item
+              name="img"
+              label="Profile Picture"
+              valuePropName="fileList"
+              getValueFromEvent={normalizeFileList}
+            >
+              <Upload
+                {...singleImageUploadProps}>
+                <Space>
+                  <UploadOutlined />
+                  Upload
+                </Space>
+              </Upload>
+            </Form.Item>
 
-        <Form.Item
-          name="radio-button"
-          label="Radio.Button"
-          rules={[{ required: true, message: 'Please pick an item!' }]}
-        >
-          <Radio.Group>
-            <Radio.Button value="a">item 1</Radio.Button>
-            <Radio.Button value="b">item 2</Radio.Button>
-            <Radio.Button value="c">item 3</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button
+                  loading={createTeamMutation.isPending}
+                  disabled={
+                    createTeamMutation.isPending || updateTeameMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !user))
+                  }
+                  type="primary"
+                  htmlType="submit"
+                >
+                  {isEdit ? "Update Team" : "Create Team"}
+                </Button>
 
-        <Form.Item name="checkbox-group" label="Checkbox.Group">
-          <Checkbox.Group>
-            <Row>
-              <Col span={8}>
-                <Checkbox value="A" style={{ lineHeight: '32px' }}>
-                  A
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="B" style={{ lineHeight: '32px' }} disabled>
-                  B
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="C" style={{ lineHeight: '32px' }}>
-                  C
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="D" style={{ lineHeight: '32px' }}>
-                  D
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="E" style={{ lineHeight: '32px' }}>
-                  E
-                </Checkbox>
-              </Col>
-              <Col span={8}>
-                <Checkbox value="F" style={{ lineHeight: '32px' }}>
-                  F
-                </Checkbox>
-              </Col>
-            </Row>
-          </Checkbox.Group>
-        </Form.Item>
+                <Button
+                  htmlType="button"
+                  onClick={handleCancel}
+                  disabled={
+                    createTeamMutation.isPending || updateTeameMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !user))
+                  }
+                >
+                  Cancel
+                </Button>
 
-        <Form.Item name="rate" label="Rate">
-          <Rate />
-        </Form.Item>
-
-        <Form.Item
-          name="upload"
-          label="Upload"
-          valuePropName="fileList"
-          getValueFromEvent={normFile}
-          extra="longgggggggggggggggggggggggggggggggggg"
-        >
-          <Upload name="logo" action="/upload.do" listType="picture">
-            <Button icon={<UploadOutlined />}>Click to upload</Button>
-          </Upload>
-        </Form.Item>
-        <Form.Item label="Dragger">
-          <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
-            <Upload.Dragger name="files" action="/upload.do">
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Click or drag file to this area to upload</p>
-              <p className="ant-upload-hint">Support for a single or bulk upload.</p>
-            </Upload.Dragger>
-          </Form.Item>
-        </Form.Item>
-        <Form.Item
-          name="color-picker"
-          label="ColorPicker"
-          rules={[{ required: true, message: 'color is required!' }]}
-        >
-          <ColorPicker />
-        </Form.Item>
-
-        <Form.Item label={null}>
-          <Space>
-            <Button type="primary" htmlType="submit">
-              Submit
-            </Button>
-            <Button htmlType="reset">reset</Button>
+                <Button
+                  htmlType="button"
+                  onClick={() => form.resetFields()}
+                  disabled={
+                    createTeamMutation.isPending || updateTeameMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !user))
+                  }
+                >
+                  Reset
+                </Button>
+              </Space>
+            </Form.Item>
           </Space>
-        </Form.Item>
-      </Form>
-    </Modal>
-  )
-}
+        </Form>
+      </Modal>
 
-export default ModalForm
+      <Image
+        alt="Project image preview"
+        src={previewImage}
+        styles={{
+          root: {
+            display: "none",
+          },
+        }}
+        preview={{
+          open: previewOpen,
+          onOpenChange: setPreviewOpen,
+          afterOpenChange: (open) => {
+            if (!open) {
+              setPreviewImage("");
+            }
+          },
+        }}
+      />
+    </>
+  );
+};
+
+export default ModalForm;
