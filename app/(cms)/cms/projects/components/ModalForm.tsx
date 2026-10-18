@@ -6,21 +6,26 @@ import {
 } from "@ant-design/icons";
 import type { UploadFile, UploadProps } from "antd";
 import {
+  Alert,
   Button,
   Card,
+  Flex,
   Form,
   Image,
   Input,
   Modal,
   Select,
   Space,
+  Spin,
   Typography,
   Upload
 } from "antd";
 import { useEffect, useState } from "react";
 
+import { useAppNotification } from "@/components/providers/NotificationProvider";
 import { NamePath } from "antd/es/form/interface";
 import { useCreateProjectMutation } from "../hooks/useCreateProjectMutation";
+import useGetProjectDetail from "../hooks/useGetProjectDetailQuery";
 import { useModal } from "../hooks/useModal";
 import type {
   ProjectFormValues
@@ -28,17 +33,13 @@ import type {
 import {
   projectFormSchema
 } from "../schemas/project.schema";
-import type { ProjectType } from "../types/data.type";
-import { useAppNotification } from "@/components/providers/NotificationProvider";
+import useGetListServicesQuery from "../hooks/useGetListServicesQuery";
 
 const { TextArea } = Input;
 const { Title } = Typography;
 
 const MAX_IMAGES = 8;
 
-type ModalFormProps = {
-  project?: ProjectType | null;
-};
 
 const normalizeFileList = (
   event: { fileList?: UploadFile[] } | UploadFile[],
@@ -73,9 +74,7 @@ const getExistingFile = (
 };
 
 
-const ModalForm = ({
-  project = null,
-}: ModalFormProps) => {
+const ModalForm = () => {
   const notification = useAppNotification();
   const createProjectMutation = useCreateProjectMutation();
   const modal = useModal((state) => state.modal);
@@ -89,48 +88,53 @@ const ModalForm = ({
   const isModalOpen = modal !== null;
   const isEdit = modal?.formAction === "edit";
 
+  const projectId = isEdit ? modal.id : undefined;
+
+  const servicesListData = useGetListServicesQuery()
+
+  const {
+    data: project,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+    error: detailError,
+  } = useGetProjectDetail(
+    projectId,
+    isModalOpen && isEdit,
+  );
+
   useEffect(() => {
     if (!isModalOpen) {
       return;
     }
 
-    if (isEdit && project) {
-      form.setFieldsValue({
-        name: project.name,
-        serviceId: project.serviceId,
-        desc: project.desc,
-        caseStudy: project.caseStudy,
-        why: project.why,
+    // Reset form ketika modal dibuka atau ID edit berubah.
+    form.resetFields();
 
-        logo_project: getExistingFile(
-          project.logoProjectPath,
-        ),
-
-        banner_project: getExistingFile(
-          project.bannerProjectPath,
-        ),
-
-        img_why: getExistingFile(
-          project.imgWhyPath,
-        ),
-
-        images: (project.images || "")
-          .split(",")
-          .map((path: string) => path.trim())
-          .filter(Boolean)
-          .map((path: string, index: number) => ({
-            uid: `existing-image-${index}-${path}`,
-            name:
-              path.split("/").pop() ||
-              `image-${index + 1}`,
-            status: "done" as const,
-            url: path,
-          })),
-      });
-    } else if (!isEdit) {
-      form.resetFields();
+    if (!isEdit || !project) {
+      return;
     }
-  }, [isModalOpen, isEdit, project, form]);
+
+    form.setFieldsValue({
+      name: project.name,
+      serviceId: project.serviceId,
+      desc: project.desc,
+      caseStudy: project.caseStudy,
+      why: project.why,
+      logo_project: getExistingFile(project.logoProjectPath),
+      banner_project: getExistingFile(project.bannerProjectPath),
+      img_why: getExistingFile(project.imgWhyPath),
+      images: (project.images || "")
+        .split(",")
+        .map((path) => path.trim())
+        .filter(Boolean)
+        .map((path, index) => ({
+          uid: `existing-image-${index}-${path}`,
+          name: path.split("/").pop() || `image-${index + 1}`,
+          status: "done" as const,
+          url: path,
+        })),
+    });
+  }, [isModalOpen, isEdit, projectId, project, form]);
 
   const handleCancel = () => {
     form.resetFields();
@@ -245,6 +249,7 @@ const ModalForm = ({
     });
   };
 
+
   return (
     <>
       <Modal
@@ -255,6 +260,24 @@ const ModalForm = ({
         width={765}
         destroyOnHidden
       >
+        {
+          isEdit && isDetailLoading && (
+            <Flex justify="center" style={{ padding: 32 }}>
+              <Spin description="Loading project detail" />
+            </Flex>
+          )
+        }
+
+        {
+          isEdit && isDetailError && (
+            <Alert
+              type="error"
+              showIcon
+              title="Failed to load project detail"
+              description={detailError.message}
+            />
+          )
+        }
         <Form<ProjectFormValues>
           form={form}
           layout="vertical"
@@ -294,16 +317,11 @@ const ModalForm = ({
             >
               <Select
                 placeholder="Please select a service type"
-                options={[
-                  {
-                    label: "Graphic Designing",
-                    value: 15,
-                  },
-                  {
-                    label: "Digital Marketing",
-                    value: 17,
-                  },
-                ]}
+                options={servicesListData?.data?.map((service) => ({
+                  label: service.serviceName,
+                  value: service.id,
+                }))}
+                loading={servicesListData.isLoading}
               />
             </Form.Item>
 
@@ -431,15 +449,23 @@ const ModalForm = ({
               <Space>
                 <Button
                   loading={createProjectMutation.isPending}
-                  disabled={createProjectMutation.isPending}
+                  disabled={
+                    createProjectMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !project))
+                  }
                   type="primary"
-                  htmlType="submit">
+                  htmlType="submit"
+                >
                   {isEdit ? "Update Project" : "Create Project"}
                 </Button>
 
                 <Button
                   htmlType="button"
                   onClick={handleCancel}
+                  disabled={
+                    createProjectMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !project))
+                  }
                 >
                   Cancel
                 </Button>
@@ -447,6 +473,10 @@ const ModalForm = ({
                 <Button
                   htmlType="button"
                   onClick={() => form.resetFields()}
+                  disabled={
+                    createProjectMutation.isPending ||
+                    (isEdit && (isDetailLoading || isDetailError || !project))
+                  }
                 >
                   Reset
                 </Button>

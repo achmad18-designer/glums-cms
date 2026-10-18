@@ -27,3 +27,8 @@ export interface ProjectPayloadType {
     imgWhyPath: string;
     images: string;
 }
+
+export interface ServicesType {
+    id: number;
+    serviceName: string;
+}

@@ -5,10 +5,13 @@ import dayjs from 'dayjs';
 import { useModal } from '../hooks/useModal';
 import { ColumnsType } from '../types/column.type';
 import { ProjectType } from '../types/data.type';
+import useDeleteProjectMutation from '../hooks/useDeleteProjectMutation';
+import { useAppNotification } from '@/components/providers/NotificationProvider';
 
 type columnAction = {
     handleDelete: (id: number) => void,
-    handleEdit: (id: number) => void
+    handleEdit: (id: number) => void,
+    deletingId?: number;
 }
 
 const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
@@ -51,6 +54,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                         onClick={() => columnAction.handleEdit(record.id)}
                         type="primary"
                         icon={<EditFilled />}
+                        disabled={columnAction.deletingId === record.id}
                     >
                         Edit
                     </Button>
@@ -65,6 +69,7 @@ const columns = (columnAction: columnAction): TableColumnsType<ColumnsType> => [
                             type="primary"
                             icon={<DeleteFilled />}
                             danger
+                            loading={columnAction.deletingId === record.id}
                         >
                             Delete
                         </Button>
@@ -84,11 +89,25 @@ const Table: React.FC<Props> = ({
     data,
     loading
 }) => {
+    const deleteMutation = useDeleteProjectMutation();
     const openEdit = useModal((state) => state.openEdit);
+    const notification = useAppNotification();
 
     const handleDelete = (id: number) => {
-        console.log('delete: ', id);
-    }
+        deleteMutation.mutate(id, {
+            onSuccess: () => {
+                notification.success({
+                    description: "Project deleted successfully",
+                });
+            },
+            onError: (error) => {
+                console.error("Delete project error:", error);
+                notification.error({
+                    description: "Failed to delete project",
+                });
+            },
+        });
+    };
 
     const handleEdit = (id: number) => {
         openEdit(id);
@@ -99,7 +118,10 @@ const Table: React.FC<Props> = ({
             rowKey="id"
             columns={columns({
                 handleDelete,
-                handleEdit
+                handleEdit,
+                deletingId: deleteMutation.isPending
+                    ? deleteMutation.variables
+                    : undefined,
             })}
             dataSource={data}
             loading={loading}
