@@ -7,14 +7,6 @@ import { getErrorMessage } from "@/utils/getErrorMessage";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
-async function logoutApi(): Promise<ApiResponse<null>> {
-    const response = await apiClient.delete<ApiResponse<null>>(
-        "/api/v1/auth/logout",
-    );
-
-    return response.data;
-}
-
 export function useLogoutMutation() {
     const router = useRouter();
     const clearAuth = useAuthStore(
@@ -22,8 +14,13 @@ export function useLogoutMutation() {
     );
 
     return useMutation({
-        mutationKey: ["auth", "logout"],
-        mutationFn: () => logoutApi(),
+        mutationFn: async () => {
+            const response = await apiClient.delete<ApiResponse<null>>(
+                "/api/v1/auth/logout",
+            );
+
+            return response.data;
+        },
         onSuccess: () => {
             clearAuth();
             router.push("/auth/login");

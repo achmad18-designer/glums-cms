@@ -18,7 +18,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
         const accessToken = response.data?.data?.accessToken;
 
-        console.log(accessToken, ": refreshAccessToken");
         if (!accessToken) {
             return null;
         }
@@ -64,7 +63,6 @@ export const setupAxiosInterceptors = () => {
             originalRequest._retry = true;
 
             if (!refreshPromise) {
-                console.log("refreshAccessToken, aaa");
                 refreshPromise = refreshAccessToken().finally(() => {
                     refreshPromise = null;
                 });

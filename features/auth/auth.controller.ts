@@ -14,6 +14,7 @@ import {
     verifyRefreshToken
 } from './auth.helper';
 import { loginSchema } from './auth.schema';
+import { Prisma } from '@/src/generated/prisma/client';
 
 export async function login(request: Request) {
     try {
@@ -83,10 +84,20 @@ export async function login(request: Request) {
 
         return response;
     } catch (error) {
-        console.error(error);
+        console.error("Login controller error:", error);
+
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P1001"
+        ) {
+            return errorResponse(
+                "Database is currently unavailable",
+                503
+            );
+        }
 
         return errorResponse(
-            'Internal server error',
+            "Internal server error",
             500
         );
     }

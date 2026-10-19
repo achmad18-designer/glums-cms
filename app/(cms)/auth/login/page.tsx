@@ -1,10 +1,10 @@
 "use client";
+import { getErrorMessage } from '@/utils/getErrorMessage';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, message } from 'antd';
-import { LoginType } from './types/login.type';
+import { Alert, Button, Card, Form, Input, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useLoginMutation } from './hooks/useLoginMutation';
-import axios from 'axios';
+import { LoginType } from './types/login.type';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,30 +18,32 @@ export default function LoginPage() {
                 );
 
                 router.replace("/cms/dashboard");
-            },
-
-            onError: (error) => {
-                if (axios.isAxiosError(error)) {
-                    message.error(
-                        error.response?.data?.message ||
-                        "Login failed. Please try again."
-                    );
-                    return;
-                }
-
-                message.error("An unexpected error occurred");
-            },
+            }
         });
     };
 
     return (
-        <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col gap-2 items-center justify-center h-screen">
             <Card
                 title="Glums ID"
                 variant="borderless"
                 className='text-center'
                 style={{ width: 400 }}
             >
+                {loginMutation.isError && (
+                    <Alert
+                        type='error'
+                        description={getErrorMessage(loginMutation.error)}
+                        variant='outlined'
+                        styles={{
+                            root: {
+                                padding: '4px 8px',
+                                marginBottom: 16
+                            }
+                        }}
+                    />
+                )}
+
                 <Form
                     name="login"
                     initialValues={{ remember: true }}
