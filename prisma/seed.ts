@@ -11,14 +11,6 @@ const prisma = new PrismaClient({
     adapter,
 });
 
-const masterPasswordHash = process.env.MASTER_PASSWORD_HASH;
-
-if (!masterPasswordHash) {
-    throw new Error(
-        "MASTER_PASSWORD_HASH belum diset di environment variable."
-    );
-}
-
 async function main() {
     console.log("🌱 Start seeding...");
 
@@ -327,20 +319,6 @@ async function main() {
 
     await prisma.user.createMany({
         data: [
-            {
-                id: 1,
-                name: "Master",
-                username: "master",
-                role: "master",
-                desc: null,
-                email: "master@glums.com",
-                password: masterPasswordHash,
-                img: null,
-                imgPath: null,
-                refreshToken: null,
-                createdAt: new Date("2024-07-14T09:01:04"),
-                updatedAt: new Date("2024-11-04T04:39:24"),
-            },
             {
                 id: 8,
                 name: "Achmad Ansori",
