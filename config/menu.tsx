@@ -4,11 +4,12 @@ import {
     SettingOutlined,
     AppstoreOutlined,
     ToolOutlined,
-    TeamOutlined,
-    LogoutOutlined,
+    TeamOutlined
 } from "@ant-design/icons";
 
-export const MENUS: MenuProps["items"] = [
+type MenuItem = Required<MenuProps>['items'][number];
+
+export const MENUS: MenuItem[] = [
     {
         key: "/cms/dashboard",
         icon: <DashboardOutlined />,
@@ -23,6 +24,16 @@ export const MENUS: MenuProps["items"] = [
         key: "/cms/services",
         icon: <ToolOutlined />,
         label: "Services",
+        children: [
+            {
+                key: '/cms/services',
+                label: 'Services',
+            },
+            {
+                key: '/cms/sub-services',
+                label: 'Sub Services',
+            },
+        ]
     },
     {
         key: "/cms/teams",
@@ -41,6 +52,7 @@ export const ROUTE_LABELS: Record<string, string> = {
     settings: "Settings",
     projects: "Projects",
     services: "Services",
+    'sub-services': "Sub Services",
     create: "Create",
     edit: "Edit",
 };

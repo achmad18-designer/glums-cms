@@ -57,12 +57,11 @@ export const antdTheme: ThemeConfig = {
             darkItemBg: '#F5F5F5',
             darkSubMenuItemBg: '#F5F5F5',
 
-            darkItemColor: '#BDBDBD',
-            darkItemHoverColor: '#FFFFFF',
-            darkItemSelectedColor: '#FFFFFF',
+            darkItemColor: '#212121',
+            darkItemHoverColor: '#BDBDBD',
+            darkItemSelectedColor: '#BDBDBD',
 
-            darkItemHoverBg: '#424242',
-            darkItemSelectedBg: '#424242',
+            darkItemSelectedBg: '#212121',
 
             darkDangerItemColor: '#BDBDBD',
             darkDangerItemHoverColor: '#FFFFFF',
