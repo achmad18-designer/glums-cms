@@ -1,0 +1,61 @@
+import { UploadFile } from "antd";
+import { z } from "zod";
+/**
+ * Validasi satu item upload.
+ *
+ * File baru dapat memiliki status uploading/done,
+ * sedangkan file existing dari server memiliki status done.
+ */
+const uploadFileSchema = z.custom<UploadFile>(
+    (value): value is UploadFile => {
+        if (!value || typeof value !== "object") {
+            return false;
+        }
+
+        return (
+            "uid" in value &&
+            typeof value.uid === "string" &&
+            "name" in value &&
+            typeof value.name === "string"
+        );
+    },
+    {
+        message: "Invalid uploaded file",
+    },
+);
+
+/**
+ * Validasi upload untuk field gambar tunggal.
+ * Kosong diperbolehkan karena gambar bisa opsional.
+ */
+const singleImageSchema = z
+    .array(uploadFileSchema)
+    .max(1, "Only one image is allowed")
+    .default([]);
+
+/**
+ * Validasi form sebelum transformasi menjadi payload API.
+ */
+export const subServiceFormSchema = z.object({
+    subServiceName: z
+        .string()
+        .trim()
+        .min(1, "Please input your service name!"),
+
+    subServiceDesc: z
+        .string()
+        .trim()
+        .min(1, "Please input your service excerpt!"),
+
+    serviceId: z
+        .number({
+            error: "Please select service type!",
+        })
+        .int("Service ID must be an integer")
+        .positive("Please select a valid service type"),
+    sub_service_banner: singleImageSchema,
+});
+
+export type SubServiceFormValues = z.infer<
+    typeof subServiceFormSchema
+>;
