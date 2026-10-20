@@ -4,6 +4,7 @@ import { errorResponse, successResponse } from "@/utils/response";
 import { uploadFile } from "@/utils/uploadFile";
 import { buildProjectUpdateData, getProjectById, getUpdateProjectData, isValidProjectId, removeOldProjectFiles, updateProjectInDatabase, uploadProjectImages, uploadSingleProjectFile } from "./projects.helper";
 import { createProjectSchema, serviceIdSchema } from "./projects.schema";
+import { getServiceById } from "../services/services.helper";
 
 export async function createProject(request: Request) {
     try {
@@ -27,6 +28,12 @@ export async function createProject(request: Request) {
                 validation.error.issues[0].message,
                 400
             );
+        }
+
+        const service = await getServiceById(String(validation.data.serviceId));
+
+        if (!service) {
+            return errorResponse('Service not found', 404);
         }
 
         if (!(logoProject instanceof File)) {
@@ -63,7 +70,7 @@ export async function createProject(request: Request) {
                 desc: validation.data.desc,
                 caseStudy: validation.data.caseStudy,
                 why: validation.data.why,
-                serviceId: validation.data.serviceId,
+                serviceId: service.id,
 
                 logoProjectName: logoUpload.name,
                 logoProjectPath: logoUpload.path,
