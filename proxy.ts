@@ -6,10 +6,10 @@ const PUBLIC_ROUTES = ["/auth/login"];
 const LOGIN_URL = "/auth/login";
 const DASHBOARD_URL = "/cms/dashboard";
 
-const ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://DOMAIN-LANDING-PAGE-KAMU",
-];
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Methods":
@@ -24,8 +24,7 @@ export function proxy(request: NextRequest) {
     // Handle CORS for API routes only.
     if (pathname.startsWith("/api/")) {
         const origin = request.headers.get("origin");
-        const isAllowedOrigin =
-            origin !== null && ALLOWED_ORIGINS.includes(origin);
+        const isAllowedOrigin = origin !== null && ALLOWED_ORIGINS.includes(origin);
 
         // Handle browser preflight before authentication logic.
         if (request.method === "OPTIONS") {
